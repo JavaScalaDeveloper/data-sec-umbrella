@@ -26,6 +26,7 @@ import {
   PlayCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import API_CONFIG from '../../config/apiConfig.ts';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -40,6 +41,11 @@ const DatabasePolicyPage: React.FC = () => {
   const [editingRecord, setEditingRecord] = useState<any>(null);
   const [form] = Form.useForm();
   const [policyData, setPolicyData] = useState<any[]>([]);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
   const [rules, setRules] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState(() => {
     if (location.pathname.includes('/task/policy/api')) return 'api';
@@ -51,26 +57,39 @@ const DatabasePolicyPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // 获取策略数据
-  const fetchPolicies = async () => {
+  const fetchPolicies = async (pageParams: { current?: number; pageSize?: number } = {}) => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8080/api/database-policy/list', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DATABASE_POLICY.LIST}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({})
+        body: JSON.stringify({
+          policyCode: searchText || undefined,
+          policyName: searchText || undefined,
+          sensitivityLevel: sensitivityLevelFilter,
+          hideExample: hideExampleFilter !== null ? (hideExampleFilter ? 1 : 0) : undefined,
+          current: pageParams.current || pagination.current,
+          size: pageParams.pageSize || pagination.pageSize
+        })
       });
       
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
         // 为前端表格添加key字段，并确保hideExample是数字类型
-        const formattedData = data.map((item: any, index: number) => ({
+        const formattedData = result.records.map((item: any, index: number) => ({
           ...item,
           key: item.id || index,
           hideExample: typeof item.hideExample === 'boolean' ? (item.hideExample ? 1 : 0) : item.hideExample
         }));
         setPolicyData(formattedData);
+        setPagination({
+          ...pagination,
+          current: result.current,
+          pageSize: result.size,
+          total: result.total,
+        });
       } else {
         message.error('获取策略数据失败');
       }
@@ -85,7 +104,7 @@ const DatabasePolicyPage: React.FC = () => {
   // 组件挂载时获取数据
   useEffect(() => {
     fetchPolicies();
-  }, []);
+  }, [searchText, sensitivityLevelFilter, hideExampleFilter]);
 
   // 分类规则表格列定义
   const ruleColumns = [
@@ -284,7 +303,7 @@ const DatabasePolicyPage: React.FC = () => {
         
         if (editingRecord) {
           // 编辑
-          response = await fetch('http://localhost:8080/api/database-policy/update', {
+          response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DATABASE_POLICY.UPDATE}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -296,7 +315,7 @@ const DatabasePolicyPage: React.FC = () => {
           });
         } else {
           // 新增
-          response = await fetch('http://localhost:8080/api/database-policy/create', {
+          response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DATABASE_POLICY.CREATE}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -322,7 +341,7 @@ const DatabasePolicyPage: React.FC = () => {
   // 删除策略
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch('http://localhost:8080/api/database-policy/delete', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DATABASE_POLICY.DELETE}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -459,7 +478,7 @@ const DatabasePolicyPage: React.FC = () => {
           </Select>
           <Select 
             placeholder="隐藏样例" 
-            style={{ width: 120 }}
+            style={{ width: 120, marginRight: 16 }}
             allowClear
             value={hideExampleFilter}
             onChange={(value) => setHideExampleFilter(value)}
@@ -467,6 +486,24 @@ const DatabasePolicyPage: React.FC = () => {
             <Option value={true}>是</Option>
             <Option value={false}>否</Option>
           </Select>
+          <Button 
+            type="primary" 
+            icon={<SearchOutlined />}
+            onClick={() => fetchPolicies({ current: 1 })}
+            style={{ marginRight: 8 }}
+          >
+            查询
+          </Button>
+          <Button 
+            onClick={() => {
+              setSearchText('');
+              setSensitivityLevelFilter(null);
+              setHideExampleFilter(null);
+              fetchPolicies({ current: 1 });
+            }}
+          >
+            清空条件
+          </Button>
         </Col>
         <Col>
           <Button 
@@ -481,12 +518,17 @@ const DatabasePolicyPage: React.FC = () => {
       
       <Table 
         columns={policyColumns} 
-        dataSource={policyData.filter(item => 
-          (searchText === '' || item.policyCode.includes(searchText) || item.policyName.includes(searchText)) &&
-          (sensitivityLevelFilter === null || item.sensitivityLevel === sensitivityLevelFilter) &&
-          (hideExampleFilter === null || item.hideExample === hideExampleFilter)
-        )} 
-        pagination={{ pageSize: 10 }} 
+        dataSource={policyData} 
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
+          onChange: (page, pageSize) => {
+            fetchPolicies({ current: page, pageSize });
+          },
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+        }}
         rowKey="key"
         loading={loading}
       />

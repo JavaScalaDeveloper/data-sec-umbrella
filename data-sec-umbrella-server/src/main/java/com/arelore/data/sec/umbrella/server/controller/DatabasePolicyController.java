@@ -2,12 +2,9 @@ package com.arelore.data.sec.umbrella.server.controller;
 
 import com.arelore.data.sec.umbrella.server.entity.DatabasePolicy;
 import com.arelore.data.sec.umbrella.server.service.DatabasePolicyService;
+import com.arelore.data.sec.umbrella.server.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/database-policy")
@@ -20,52 +17,60 @@ public class DatabasePolicyController {
      * 获取所有数据库策略
      */
     @PostMapping("/list")
-    public List<DatabasePolicy> listPolicies(@RequestBody Map<String, Object> params) {
-        return databasePolicyService.list();
+    public PageResponseDTO<DatabasePolicy> listPolicies(@RequestBody DatabasePolicyQueryDTO queryDTO) {
+        return databasePolicyService.listPoliciesWithPagination(queryDTO);
     }
 
     /**
      * 根据ID获取数据库策略
      */
     @PostMapping("/get")
-    public DatabasePolicy getPolicyById(@RequestBody Map<String, Object> params) {
-        Long id = Long.valueOf(params.get("id").toString());
-        return databasePolicyService.getById(id);
+    public DatabasePolicy getPolicyById(@RequestBody DatabasePolicyIdDTO idDTO) {
+        return databasePolicyService.getById(idDTO.getId());
     }
 
     /**
      * 创建数据库策略
      */
     @PostMapping("/create")
-    public Map<String, Object> createPolicy(@RequestBody DatabasePolicy policy) {
-        Map<String, Object> result = new HashMap<>();
+    public DatabasePolicyResultDTO createPolicy(@RequestBody DatabasePolicy policy) {
         boolean success = databasePolicyService.save(policy);
-        result.put("success", success);
-        result.put("data", policy);
-        return result;
+        DatabasePolicyDTO dto = new DatabasePolicyDTO();
+        dto.setId(policy.getId());
+        dto.setPolicyCode(policy.getPolicyCode());
+        dto.setPolicyName(policy.getPolicyName());
+        dto.setPolicyDescription(policy.getDescription());
+        dto.setSensitivityLevel(policy.getSensitivityLevel());
+        dto.setHideExample(policy.getHideExample());
+        dto.setCreateTime(policy.getCreateTime());
+        dto.setModifyTime(policy.getModifyTime());
+        return DatabasePolicyResultDTO.of(success, dto);
     }
 
     /**
      * 更新数据库策略
      */
     @PostMapping("/update")
-    public Map<String, Object> updatePolicy(@RequestBody DatabasePolicy policy) {
-        Map<String, Object> result = new HashMap<>();
+    public DatabasePolicyResultDTO updatePolicy(@RequestBody DatabasePolicy policy) {
         boolean success = databasePolicyService.updateById(policy);
-        result.put("success", success);
-        result.put("data", policy);
-        return result;
+        DatabasePolicyDTO dto = new DatabasePolicyDTO();
+        dto.setId(policy.getId());
+        dto.setPolicyCode(policy.getPolicyCode());
+        dto.setPolicyName(policy.getPolicyName());
+        dto.setPolicyDescription(policy.getDescription());
+        dto.setSensitivityLevel(policy.getSensitivityLevel());
+        dto.setHideExample(policy.getHideExample());
+        dto.setCreateTime(policy.getCreateTime());
+        dto.setModifyTime(policy.getModifyTime());
+        return DatabasePolicyResultDTO.of(success, dto);
     }
 
     /**
      * 删除数据库策略
      */
     @PostMapping("/delete")
-    public Map<String, Object> deletePolicy(@RequestBody Map<String, Object> params) {
-        Map<String, Object> result = new HashMap<>();
-        Long id = Long.valueOf(params.get("id").toString());
-        boolean success = databasePolicyService.removeById(id);
-        result.put("success", success);
-        return result;
+    public OperationResultDTO deletePolicy(@RequestBody DatabasePolicyIdDTO idDTO) {
+        boolean success = databasePolicyService.removeById(idDTO.getId());
+        return OperationResultDTO.of(success);
     }
 }
