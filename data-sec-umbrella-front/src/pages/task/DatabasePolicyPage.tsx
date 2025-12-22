@@ -76,7 +76,8 @@ const DatabasePolicyPage: React.FC = () => {
       });
       
       if (response.ok) {
-        const result = await response.json();
+        const resultWrapper = await response.json();
+        const result = resultWrapper.data;
         // 为前端表格添加key字段，并确保hideExample是数字类型
         const formattedData = result.records.map((item: any, index: number) => ({
           ...item,
@@ -456,13 +457,7 @@ const DatabasePolicyPage: React.FC = () => {
       
       <Row justify="space-between" align="middle" style={{ marginBottom: 16, marginTop: 16 }}>
         <Col>
-          <Input
-            placeholder="请输入策略code或策略名"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            suffix={<SearchOutlined />}
-            style={{ width: 300, marginRight: 16 }}
-          />
+      
           <Select 
             placeholder="敏感等级" 
             style={{ width: 120, marginRight: 16 }}

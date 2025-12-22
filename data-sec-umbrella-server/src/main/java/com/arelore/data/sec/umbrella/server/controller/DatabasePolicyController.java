@@ -17,60 +17,56 @@ public class DatabasePolicyController {
      * 获取所有数据库策略
      */
     @PostMapping("/list")
-    public PageResponseDTO<DatabasePolicy> listPolicies(@RequestBody DatabasePolicyQueryDTO queryDTO) {
-        return databasePolicyService.listPoliciesWithPagination(queryDTO);
+    public Result<PageResponseDTO<DatabasePolicy>> listPolicies(@RequestBody DatabasePolicyQueryDTO queryDTO) {
+        PageResponseDTO<DatabasePolicy> data = databasePolicyService.listPoliciesWithPagination(queryDTO);
+        return Result.success(data);
     }
 
     /**
      * 根据ID获取数据库策略
      */
     @PostMapping("/get")
-    public DatabasePolicy getPolicyById(@RequestBody DatabasePolicyIdDTO idDTO) {
-        return databasePolicyService.getById(idDTO.getId());
+    public Result<DatabasePolicy> getPolicyById(@RequestBody DatabasePolicyIdDTO idDTO) {
+        DatabasePolicy data = databasePolicyService.getById(idDTO.getId());
+        return Result.success(data);
     }
 
     /**
      * 创建数据库策略
      */
     @PostMapping("/create")
-    public DatabasePolicyResultDTO createPolicy(@RequestBody DatabasePolicy policy) {
+    public Result<DatabasePolicy> createPolicy(@RequestBody DatabasePolicy policy) {
         boolean success = databasePolicyService.save(policy);
-        DatabasePolicyDTO dto = new DatabasePolicyDTO();
-        dto.setId(policy.getId());
-        dto.setPolicyCode(policy.getPolicyCode());
-        dto.setPolicyName(policy.getPolicyName());
-        dto.setPolicyDescription(policy.getDescription());
-        dto.setSensitivityLevel(policy.getSensitivityLevel());
-        dto.setHideExample(policy.getHideExample());
-        dto.setCreateTime(policy.getCreateTime());
-        dto.setModifyTime(policy.getModifyTime());
-        return DatabasePolicyResultDTO.of(success, dto);
+        if (success) {
+            return Result.success(policy);
+        } else {
+            return Result.error("创建策略失败");
+        }
     }
 
     /**
      * 更新数据库策略
      */
     @PostMapping("/update")
-    public DatabasePolicyResultDTO updatePolicy(@RequestBody DatabasePolicy policy) {
+    public Result<DatabasePolicy> updatePolicy(@RequestBody DatabasePolicy policy) {
         boolean success = databasePolicyService.updateById(policy);
-        DatabasePolicyDTO dto = new DatabasePolicyDTO();
-        dto.setId(policy.getId());
-        dto.setPolicyCode(policy.getPolicyCode());
-        dto.setPolicyName(policy.getPolicyName());
-        dto.setPolicyDescription(policy.getDescription());
-        dto.setSensitivityLevel(policy.getSensitivityLevel());
-        dto.setHideExample(policy.getHideExample());
-        dto.setCreateTime(policy.getCreateTime());
-        dto.setModifyTime(policy.getModifyTime());
-        return DatabasePolicyResultDTO.of(success, dto);
+        if (success) {
+            return Result.success(policy);
+        } else {
+            return Result.error("更新策略失败");
+        }
     }
 
     /**
      * 删除数据库策略
      */
     @PostMapping("/delete")
-    public OperationResultDTO deletePolicy(@RequestBody DatabasePolicyIdDTO idDTO) {
+    public Result<Boolean> deletePolicy(@RequestBody DatabasePolicyIdDTO idDTO) {
         boolean success = databasePolicyService.removeById(idDTO.getId());
-        return OperationResultDTO.of(success);
+        if (success) {
+            return Result.success(true);
+        } else {
+            return Result.error("删除策略失败");
+        }
     }
 }
