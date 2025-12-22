@@ -16,13 +16,13 @@ public class DatabasePolicy {
     /**
      * 创建时间
      */
-    @TableField(value = "create_time", fill = FieldFill.INSERT)
+    @TableField(value = "create_time", insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
     private LocalDateTime createTime;
 
     /**
      * 修改时间
      */
-    @TableField(value = "modify_time", fill = FieldFill.INSERT_UPDATE)
+    @TableField(value = "modify_time", insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
     private LocalDateTime modifyTime;
 
     /**

@@ -54,7 +54,7 @@ const DatabasePolicyPage: React.FC = () => {
   const fetchPolicies = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/database-policy/list', {
+      const response = await fetch('http://localhost:8080/api/database-policy/list', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,10 +64,11 @@ const DatabasePolicyPage: React.FC = () => {
       
       if (response.ok) {
         const data = await response.json();
-        // 为前端表格添加key字段
+        // 为前端表格添加key字段，并确保hideExample是数字类型
         const formattedData = data.map((item: any, index: number) => ({
           ...item,
-          key: item.id || index
+          key: item.id || index,
+          hideExample: typeof item.hideExample === 'boolean' ? (item.hideExample ? 1 : 0) : item.hideExample
         }));
         setPolicyData(formattedData);
       } else {
@@ -240,7 +241,7 @@ const DatabasePolicyPage: React.FC = () => {
     if (record) {
       form.setFieldsValue({
         ...record,
-        hideExample: record.hideExample || false
+        hideExample: record.hideExample === 1  // 将整数转换为布尔值
       });
       // 初始化规则数据
       if (record.classificationRules) {
@@ -271,9 +272,10 @@ const DatabasePolicyPage: React.FC = () => {
   // 保存策略
   const handleSave = () => {
     form.validateFields().then(async values => {
-      // 添加分类规则到表单数据
+      // 添加分类规则到表单数据，并转换布尔值为整数
       const formData = {
         ...values,
+        hideExample: values.hideExample ? 1 : 0,  // 将布尔值转换为整数
         classificationRules: JSON.stringify(rules)
       };
       
@@ -282,7 +284,7 @@ const DatabasePolicyPage: React.FC = () => {
         
         if (editingRecord) {
           // 编辑
-          response = await fetch('/api/database-policy/update', {
+          response = await fetch('http://localhost:8080/api/database-policy/update', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -294,7 +296,7 @@ const DatabasePolicyPage: React.FC = () => {
           });
         } else {
           // 新增
-          response = await fetch('/api/database-policy/create', {
+          response = await fetch('http://localhost:8080/api/database-policy/create', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -320,7 +322,7 @@ const DatabasePolicyPage: React.FC = () => {
   // 删除策略
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch('/api/database-policy/delete', {
+      const response = await fetch('http://localhost:8080/api/database-policy/delete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -359,13 +361,13 @@ const DatabasePolicyPage: React.FC = () => {
   const policyColumns = [
     {
       title: '策略code',
-      dataIndex: 'oCode',
-      key: 'oCode',
+      dataIndex: 'policyCode',
+      key: 'policyCode',
     },
     {
       title: '策略名',
-      dataIndex: 'chineseName',
-      key: 'chineseName',
+      dataIndex: 'policyName',
+      key: 'policyName',
     },
     {
       title: '描述',
@@ -386,9 +388,9 @@ const DatabasePolicyPage: React.FC = () => {
       title: '隐藏样例',
       dataIndex: 'hideExample',
       key: 'hideExample',
-      render: (hide: boolean) => (
-        <Tag color={hide ? 'red' : 'green'}>
-          {hide ? '是' : '否'}
+      render: (hide: number) => (
+        <Tag color={hide === 1 ? 'red' : 'green'}>
+          {hide === 1 ? '是' : '否'}
         </Tag>
       ),
     },
@@ -480,7 +482,7 @@ const DatabasePolicyPage: React.FC = () => {
       <Table 
         columns={policyColumns} 
         dataSource={policyData.filter(item => 
-          (searchText === '' || item.oCode.includes(searchText) || item.chineseName.includes(searchText)) &&
+          (searchText === '' || item.policyCode.includes(searchText) || item.policyName.includes(searchText)) &&
           (sensitivityLevelFilter === null || item.sensitivityLevel === sensitivityLevelFilter) &&
           (hideExampleFilter === null || item.hideExample === hideExampleFilter)
         )} 
@@ -510,7 +512,7 @@ const DatabasePolicyPage: React.FC = () => {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="oCode"
+                name="policyCode"
                 label="策略code"
                 rules={[{ required: true, message: '请输入策略code!' }]}
                 extra="只能输入字母、数字、_、-"
@@ -520,7 +522,7 @@ const DatabasePolicyPage: React.FC = () => {
             </Col>
             <Col span={12}>
               <Form.Item
-                name="chineseName"
+                name="policyName"
                 label="策略名"
                 rules={[{ required: true, message: '请输入策略名!' }]}
               >
@@ -603,9 +605,8 @@ const DatabasePolicyPage: React.FC = () => {
           <Form.Item
             name="classificationRules"
             label="分类规则"
-            rules={[{ required: true, message: '请添加至少一条分类规则!' }]}
           >
-            <Input.TextArea rows={3} placeholder="分类规则将以JSON数组格式存储" disabled />
+            <Input.TextArea rows={3} placeholder="请输入分类规则，将以JSON数组格式存储" />
           </Form.Item>
           
           <Form.Item>
