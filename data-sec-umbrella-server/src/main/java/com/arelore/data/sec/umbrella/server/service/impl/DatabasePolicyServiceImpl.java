@@ -1,54 +1,130 @@
 package com.arelore.data.sec.umbrella.server.service.impl;
 
+import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyQueryRequest;
+import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyRequest;
+import com.arelore.data.sec.umbrella.server.dto.response.DatabasePolicyResponse;
+import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.entity.DatabasePolicy;
 import com.arelore.data.sec.umbrella.server.mapper.DatabasePolicyMapper;
 import com.arelore.data.sec.umbrella.server.service.DatabasePolicyService;
-
-import com.arelore.data.sec.umbrella.server.dto.DatabasePolicyQueryDTO;
-import com.arelore.data.sec.umbrella.server.dto.PageResponseDTO;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * <p>
+ * 数据库策略表 服务实现类
+ * </p>
+ *
+ * @author arelore
+ * @since 2025-12-24
+ */
 @Service
 public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper, DatabasePolicy> implements DatabasePolicyService {
-    
+
     @Override
-    public PageResponseDTO<DatabasePolicy> listPoliciesWithPagination(DatabasePolicyQueryDTO queryDTO) {
+    public PageResponse<DatabasePolicyResponse> getPage(DatabasePolicyQueryRequest request) {
+        // 构建查询条件
+        LambdaQueryWrapper<DatabasePolicy> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 如果有策略编码，添加查询条件
+        if (request.getPolicyCode() != null && !request.getPolicyCode().trim().isEmpty()) {
+            queryWrapper.like(DatabasePolicy::getPolicyCode, request.getPolicyCode());
+        }
+
         // 创建分页对象
-        Page<DatabasePolicy> page = new Page<>(queryDTO.getCurrent(), queryDTO.getSize());
-        
-        // 创建查询条件
-        QueryWrapper<DatabasePolicy> queryWrapper = new QueryWrapper<>();
-        
-        // 添加查询条件
-        if (queryDTO.getPolicyCode() != null && !queryDTO.getPolicyCode().isEmpty()) {
-            queryWrapper.like("policy_code", queryDTO.getPolicyCode());
-        }
-        if (queryDTO.getPolicyName() != null && !queryDTO.getPolicyName().isEmpty()) {
-            queryWrapper.like("policy_name", queryDTO.getPolicyName());
-        }
-        if (queryDTO.getSensitivityLevel() != null) {
-            queryWrapper.eq("sensitivity_level", queryDTO.getSensitivityLevel());
-        }
-        if (queryDTO.getHideExample() != null) {
-            queryWrapper.eq("hide_example", queryDTO.getHideExample());
-        }
-        
-        // 按修改时间倒序排列
-        queryWrapper.orderByDesc("modify_time");
-        
+        Page<DatabasePolicy> page = new Page<>(request.getCurrent(), request.getSize());
+
         // 执行分页查询
-        Page<DatabasePolicy> resultPage = this.page(page, queryWrapper);
-        
-        // 构造返回结果
-        return PageResponseDTO.of(
-            resultPage.getRecords(),
-            resultPage.getTotal(),
-            Math.toIntExact(resultPage.getCurrent()),
-            Math.toIntExact(resultPage.getSize()),
-            resultPage.getPages()
+        IPage<DatabasePolicy> pageResult = this.page(page, queryWrapper);
+
+        // 转换为响应对象
+        List<DatabasePolicyResponse> records = pageResult.getRecords().stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+
+        // 构建分页响应
+        return new PageResponse<>(
+                records,
+                pageResult.getTotal(),
+                pageResult.getCurrent(),
+                pageResult.getSize()
         );
+    }
+
+    @Override
+    public List<DatabasePolicyResponse> getAll() {
+        List<DatabasePolicy> list = this.list();
+        return list.stream().map(this::convertToResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public DatabasePolicyResponse getById(Long id) {
+        DatabasePolicy entity = super.getById(id);
+
+        if (entity != null) {
+            // 转换为响应对象
+            DatabasePolicyResponse response = new DatabasePolicyResponse();
+            BeanUtils.copyProperties(entity, response);
+
+            return response;
+        }
+
+        return null;
+    }
+
+    @Override
+    public DatabasePolicyResponse getByPolicyCode(String policyCode) {
+        LambdaQueryWrapper<DatabasePolicy> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DatabasePolicy::getPolicyCode, policyCode);
+        DatabasePolicy entity = this.getOne(queryWrapper);
+
+        if (entity != null) {
+            return convertToResponse(entity);
+        }
+
+        return null;
+    }
+
+    @Override
+    public Long create(DatabasePolicyRequest databasePolicyRequest) {
+        DatabasePolicy entity = new DatabasePolicy();
+        BeanUtils.copyProperties(databasePolicyRequest, entity);
+
+        boolean success = this.save(entity);
+        if (success) {
+            return entity.getId();
+        }
+
+        return null;
+    }
+
+    @Override
+    public boolean update(Long id, DatabasePolicyRequest databasePolicyRequest) {
+        DatabasePolicy entity = new DatabasePolicy();
+        BeanUtils.copyProperties(databasePolicyRequest, entity);
+
+        entity.setId(id);
+
+        return this.updateById(entity);
+    }
+
+    @Override
+    public boolean delete(Long id) {
+        return this.removeById(id);
+    }
+
+    private DatabasePolicyResponse convertToResponse(DatabasePolicy entity) {
+        DatabasePolicyResponse response = new DatabasePolicyResponse();
+        BeanUtils.copyProperties(entity, response);
+
+        return response;
     }
 }

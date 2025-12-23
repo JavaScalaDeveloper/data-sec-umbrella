@@ -19,6 +19,7 @@ function App() {
         <Route path="/" element={<MainLayout />}> 
           <Route index element={<HomePage />} />
           <Route path="task/policy" element={<DatabasePolicyPage />} />
+          <Route path="task/policy/database" element={<DatabasePolicyPage />} />
           <Route path="task/policy/api" element={<ApiPolicyPage />} />
           <Route path="task/policy/message" element={<MessagePolicyPage />} />
           <Route path="task/policy/log" element={<LogPolicyPage />} />

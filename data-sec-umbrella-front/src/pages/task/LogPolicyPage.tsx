@@ -15,7 +15,8 @@ import {
   Switch, 
   Popconfirm,
   message,
-  Card
+  Card,
+  Tabs
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -23,6 +24,7 @@ import {
   DeleteOutlined, 
   SearchOutlined
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -53,6 +55,27 @@ const LogPolicyPage: React.FC = () => {
   const [editingRecord, setEditingRecord] = useState<any>(null);
   const [form] = Form.useForm();
   const [policyData, setPolicyData] = useState(initialPolicyData);
+  const navigate = useNavigate();
+
+  // 处理选项卡切换
+  const handleTabChange = (key: string) => {
+    switch (key) {
+      case 'database':
+        navigate('/task/policy/database');
+        break;
+      case 'api':
+        navigate('/task/policy/api');
+        break;
+      case 'message':
+        navigate('/task/policy/message');
+        break;
+      case 'log':
+        navigate('/task/policy/log');
+        break;
+      default:
+        navigate('/task/policy/database');
+    }
+  };
 
   // 显示模态框
   const showModal = (record: any = null) => {
@@ -172,16 +195,19 @@ const LogPolicyPage: React.FC = () => {
 
   return (
     <div>
-      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-        <Col>
-          <Input
-            placeholder="请输入策略code或策略名"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            suffix={<SearchOutlined />}
-            style={{ width: 300 }}
-          />
-        </Col>
+      <Tabs 
+        activeKey="log" 
+        onChange={handleTabChange}
+        items={[
+          { key: 'database', label: '数据库' },
+          { key: 'api', label: 'API' },
+          { key: 'message', label: '消息' },
+          { key: 'log', label: '日志' }
+        ]}
+      />
+      
+      <Row justify="space-between" align="middle" style={{ marginBottom: 16, marginTop: 16 }}>
+        
         <Col>
           <Button 
             type="primary" 
@@ -208,7 +234,7 @@ const LogPolicyPage: React.FC = () => {
         open={isModalVisible}
         onOk={handleSave}
         onCancel={handleCancel}
-        width={600}
+        width="80%"
         maskClosable={false}
       >
         <Form

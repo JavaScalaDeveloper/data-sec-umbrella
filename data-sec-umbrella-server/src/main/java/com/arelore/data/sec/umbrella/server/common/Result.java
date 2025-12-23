@@ -1,4 +1,4 @@
-package com.arelore.data.sec.umbrella.server.dto;
+package com.arelore.data.sec.umbrella.server.common;
 
 import lombok.Data;
 

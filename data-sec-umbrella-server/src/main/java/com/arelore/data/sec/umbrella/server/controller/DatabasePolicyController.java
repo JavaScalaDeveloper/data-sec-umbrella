@@ -1,72 +1,80 @@
 package com.arelore.data.sec.umbrella.server.controller;
 
-import com.arelore.data.sec.umbrella.server.entity.DatabasePolicy;
+import com.arelore.data.sec.umbrella.server.common.Result;
+import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyQueryRequest;
+import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyRequest;
+import com.arelore.data.sec.umbrella.server.dto.response.DatabasePolicyResponse;
+import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.service.DatabasePolicyService;
-import com.arelore.data.sec.umbrella.server.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
+/**
+ * <p>
+ * 数据库策略表 前端控制器
+ * </p>
+ *
+ * @author arelore
+ * @since 2025-12-24
+ */
 @RestController
-@RequestMapping("/api/database-policy")
+@RequestMapping("api/database-policy")
 public class DatabasePolicyController {
 
+    private final DatabasePolicyService databasePolicyService;
+
     @Autowired
-    private DatabasePolicyService databasePolicyService;
+    public DatabasePolicyController(DatabasePolicyService databasePolicyService) {
+        this.databasePolicyService = databasePolicyService;
+    }
 
-    /**
-     * 获取所有数据库策略
-     */
     @PostMapping("/list")
-    public Result<PageResponseDTO<DatabasePolicy>> listPolicies(@RequestBody DatabasePolicyQueryDTO queryDTO) {
-        PageResponseDTO<DatabasePolicy> data = databasePolicyService.listPoliciesWithPagination(queryDTO);
-        return Result.success(data);
+    public Result<PageResponse<DatabasePolicyResponse>> list(@RequestBody DatabasePolicyQueryRequest request) {
+        PageResponse<DatabasePolicyResponse> pageResponse = databasePolicyService.getPage(request);
+        return Result.success(pageResponse);
     }
 
-    /**
-     * 根据ID获取数据库策略
-     */
-    @PostMapping("/get")
-    public Result<DatabasePolicy> getPolicyById(@RequestBody DatabasePolicyIdDTO idDTO) {
-        DatabasePolicy data = databasePolicyService.getById(idDTO.getId());
-        return Result.success(data);
+    @PostMapping("/getById")
+    public Result<DatabasePolicyResponse> getById(@RequestBody DatabasePolicyQueryRequest request) {
+        DatabasePolicyResponse databasePolicy = databasePolicyService.getById(request.getId());
+        if (databasePolicy != null) {
+            return Result.success(databasePolicy);
+        }
+        return Result.error("策略不存在");
     }
 
-    /**
-     * 创建数据库策略
-     */
+    @PostMapping("/getByPolicyCode")
+    public Result<DatabasePolicyResponse> getByPolicyCode(@RequestBody DatabasePolicyQueryRequest request) {
+        DatabasePolicyResponse databasePolicy = databasePolicyService.getByPolicyCode(request.getPolicyCode());
+        if (databasePolicy != null) {
+            return Result.success(databasePolicy);
+        }
+        return Result.error("策略不存在");
+    }
+
     @PostMapping("/create")
-    public Result<DatabasePolicy> createPolicy(@RequestBody DatabasePolicy policy) {
-        boolean success = databasePolicyService.save(policy);
-        if (success) {
-            return Result.success(policy);
-        } else {
-            return Result.error("创建策略失败");
-        }
+    public Result<Long> create(@RequestBody DatabasePolicyRequest databasePolicyRequest) {
+        Long id = databasePolicyService.create(databasePolicyRequest);
+        return Result.success(id);
     }
 
-    /**
-     * 更新数据库策略
-     */
     @PostMapping("/update")
-    public Result<DatabasePolicy> updatePolicy(@RequestBody DatabasePolicy policy) {
-        boolean success = databasePolicyService.updateById(policy);
-        if (success) {
-            return Result.success(policy);
-        } else {
-            return Result.error("更新策略失败");
+    public Result<Boolean> update(@RequestBody DatabasePolicyRequest databasePolicyRequest) {
+        boolean result = databasePolicyService.update(databasePolicyRequest.getId(), databasePolicyRequest);
+        if (result) {
+            return Result.success(true);
         }
+        return Result.error("更新失败，策略不存在");
     }
 
-    /**
-     * 删除数据库策略
-     */
     @PostMapping("/delete")
-    public Result<Boolean> deletePolicy(@RequestBody DatabasePolicyIdDTO idDTO) {
-        boolean success = databasePolicyService.removeById(idDTO.getId());
-        if (success) {
+    public Result<Boolean> delete(@RequestBody DatabasePolicyQueryRequest request) {
+        boolean result = databasePolicyService.delete(request.getId());
+        if (result) {
             return Result.success(true);
-        } else {
-            return Result.error("删除策略失败");
         }
+        return Result.error("删除失败，策略不存在");
     }
 }

@@ -55,6 +55,7 @@ const DatabasePolicyPage: React.FC = () => {
   });
   const [validationResult, setValidationResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [classificationRulesData, setClassificationRulesData] = useState<any[]>([]);
 
   // 获取策略数据
   const fetchPolicies = async (pageParams: { current?: number; pageSize?: number } = {}) => {
@@ -114,6 +115,7 @@ const DatabasePolicyPage: React.FC = () => {
       dataIndex: 'id',
       key: 'id',
       width: 60,
+      render: (_: any, __: any, index: number) => index + 1,
     },
     {
       title: '条件对象',
@@ -219,6 +221,9 @@ const DatabasePolicyPage: React.FC = () => {
   const handleTabChange = (key: string) => {
     setActiveTab(key);
     switch (key) {
+      case 'database':
+        navigate('/task/policy/database');
+        break;
       case 'api':
         navigate('/task/policy/api');
         break;
@@ -229,7 +234,7 @@ const DatabasePolicyPage: React.FC = () => {
         navigate('/task/policy/log');
         break;
       default:
-        navigate('/task/policy');
+        navigate('/task/policy/database');
     }
   };
 
@@ -275,9 +280,23 @@ const DatabasePolicyPage: React.FC = () => {
       } else {
         setRules([]);
       }
+      
+      // 初始化验证数据
+      if (record.classificationRulesData) {
+        try {
+          const parsedData = JSON.parse(record.classificationRulesData);
+          setClassificationRulesData(parsedData);
+        } catch (e) {
+          console.error('解析验证数据失败:', e);
+          setClassificationRulesData([]);
+        }
+      } else {
+        setClassificationRulesData([]);
+      }
     } else {
       form.resetFields();
       setRules([]);
+      setClassificationRulesData([]);
     }
   };
 
@@ -287,16 +306,32 @@ const DatabasePolicyPage: React.FC = () => {
     setEditingRecord(null);
     form.resetFields();
     setRules([]);
+    setClassificationRulesData([]);
   };
 
   // 保存策略
   const handleSave = () => {
     form.validateFields().then(async values => {
+      // 验证分类规则是否为空
+      if (rules.length === 0) {
+        message.error('请至少添加一条分类规则');
+        return;
+      }
+      
+      // 验证每条规则的必填字段
+      for (const rule of rules) {
+        if (!rule.conditionObject || !rule.conditionType || !rule.expression || !rule.ratio) {
+          message.error('请完善所有分类规则的必填字段');
+          return;
+        }
+      }
+      
       // 添加分类规则到表单数据，并转换布尔值为整数
       const formData = {
         ...values,
         hideExample: values.hideExample ? 1 : 0,  // 将布尔值转换为整数
-        classificationRules: JSON.stringify(rules)
+        classificationRules: JSON.stringify(rules),
+        classificationRulesData: JSON.stringify(classificationRulesData)
       };
       
       try {
@@ -327,6 +362,7 @@ const DatabasePolicyPage: React.FC = () => {
         
         if (response.ok) {
           message.success(`${editingRecord ? '编辑' : '新增'}成功`);
+          setClassificationRulesData([]); // 清空表格数据
           handleCancel();
           fetchPolicies(); // 重新获取数据
         } else {
@@ -534,7 +570,7 @@ const DatabasePolicyPage: React.FC = () => {
         open={isModalVisible}
         onOk={handleSave}
         onCancel={handleCancel}
-        width={800}
+        width="80%"
         maskClosable={false}
       >
         <Form
@@ -605,7 +641,7 @@ const DatabasePolicyPage: React.FC = () => {
           </Row>
           
           <Card 
-            title="分类规则" 
+            title={<span>分类规则 <span style={{ color: 'red' }}>*</span></span>}
             extra={
               <Button type="primary" onClick={addRule}>
                 添加规则
@@ -641,9 +677,165 @@ const DatabasePolicyPage: React.FC = () => {
           
           <Form.Item
             name="classificationRules"
-            label="分类规则"
+            label="验证数据"
           >
-            <Input.TextArea rows={3} placeholder="请输入分类规则，将以JSON数组格式存储" />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+              <Button
+                type="dashed"
+                onClick={() => {
+                  setClassificationRulesData([
+                    ...classificationRulesData,
+                    { 
+                      databaseName: '', 
+                      databaseDescription: '', 
+                      tableName: '', 
+                      tableDescription: '', 
+                      columnName: '', 
+                      columnDescription: '', 
+                      columnValue: '' 
+                    }
+                  ]);
+                }}
+              >
+                + 添加样例
+              </Button>
+            </div>
+            <Table
+               columns={[
+                 {
+                   title: '库名',
+                   dataIndex: 'databaseName',
+                   key: 'databaseName',
+                   render: (_, record, index) => (
+                     <Input
+                       value={record.databaseName}
+                       onChange={(e) => {
+                         const newData = [...classificationRulesData];
+                         newData[index].databaseName = e.target.value;
+                         setClassificationRulesData(newData);
+                       }}
+                       placeholder="请输入库名"
+                     />
+                   )
+                 },
+                 {
+                   title: '库描述',
+                   dataIndex: 'databaseDescription',
+                   key: 'databaseDescription',
+                   render: (_, record, index) => (
+                     <Input
+                       value={record.databaseDescription}
+                       onChange={(e) => {
+                         const newData = [...classificationRulesData];
+                         newData[index].databaseDescription = e.target.value;
+                         setClassificationRulesData(newData);
+                       }}
+                       placeholder="请输入库描述"
+                     />
+                   )
+                 },
+                 {
+                   title: '表名',
+                   dataIndex: 'tableName',
+                   key: 'tableName',
+                   render: (_, record, index) => (
+                     <Input
+                       value={record.tableName}
+                       onChange={(e) => {
+                         const newData = [...classificationRulesData];
+                         newData[index].tableName = e.target.value;
+                         setClassificationRulesData(newData);
+                       }}
+                       placeholder="请输入表名"
+                     />
+                   )
+                 },
+                 {
+                   title: '表描述',
+                   dataIndex: 'tableDescription',
+                   key: 'tableDescription',
+                   render: (_, record, index) => (
+                     <Input
+                       value={record.tableDescription}
+                       onChange={(e) => {
+                         const newData = [...classificationRulesData];
+                         newData[index].tableDescription = e.target.value;
+                         setClassificationRulesData(newData);
+                       }}
+                       placeholder="请输入表描述"
+                     />
+                   )
+                 },
+                 {
+                   title: '列名',
+                   dataIndex: 'columnName',
+                   key: 'columnName',
+                   render: (_, record, index) => (
+                     <Input
+                       value={record.columnName}
+                       onChange={(e) => {
+                         const newData = [...classificationRulesData];
+                         newData[index].columnName = e.target.value;
+                         setClassificationRulesData(newData);
+                       }}
+                       placeholder="请输入列名"
+                     />
+                   )
+                 },
+                 {
+                   title: '列描述',
+                   dataIndex: 'columnDescription',
+                   key: 'columnDescription',
+                   render: (_, record, index) => (
+                     <Input
+                       value={record.columnDescription}
+                       onChange={(e) => {
+                         const newData = [...classificationRulesData];
+                         newData[index].columnDescription = e.target.value;
+                         setClassificationRulesData(newData);
+                       }}
+                       placeholder="请输入列描述"
+                     />
+                   )
+                 },
+                 {
+                   title: '列值',
+                   dataIndex: 'columnValue',
+                   key: 'columnValue',
+                   render: (_, record, index) => (
+                     <Input.TextArea
+                       value={record.columnValue}
+                       onChange={(e) => {
+                         const newData = [...classificationRulesData];
+                         newData[index].columnValue = e.target.value;
+                         setClassificationRulesData(newData);
+                       }}
+                       placeholder="请输入列值"
+                       rows={2}
+                     />
+                   )
+                 },
+                 {
+                   title: '操作',
+                   key: 'action',
+                   render: (_, record, index) => (
+                     <Button
+                       type="link"
+                       danger
+                       onClick={() => {
+                         const newData = classificationRulesData.filter((_, i) => i !== index);
+                         setClassificationRulesData(newData);
+                       }}
+                     >
+                       删除
+                     </Button>
+                   )
+                 }
+               ]}
+               dataSource={classificationRulesData}
+               pagination={false}
+               rowKey={(record, index) => index}
+             />
           </Form.Item>
           
           <Form.Item>

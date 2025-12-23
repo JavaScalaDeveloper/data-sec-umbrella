@@ -13,6 +13,11 @@ spring:
       minimum-idle: 5
       idle-timeout: 300000
       max-lifetime: 1200000
+  mvc:
+    # 禁用某些HTTP方法，强制使用POST
+    hiddenmethod:
+      filter:
+        enabled: false
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

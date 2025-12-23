@@ -13,7 +13,6 @@ CREATE TABLE `database_policy`
     `classification_rules` JSON COMMENT '分类规则',
     `rule_expression`      TEXT COMMENT '规则表达式',
     `ai_rule`              TEXT COMMENT 'AI规则',
-
     UNIQUE KEY `uk_policy_code` (`policy_code`),
     INDEX                  `idx_modify_time` (`modify_time`),
     INDEX                  `idx_create_time` (`create_time`)
