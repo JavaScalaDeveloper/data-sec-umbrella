@@ -1,7 +1,9 @@
 package com.arelore.data.sec.umbrella.server.service;
 
+import com.arelore.data.sec.umbrella.server.dto.request.ApiPolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.dto.request.ApiPolicyRequest;
 import com.arelore.data.sec.umbrella.server.dto.response.ApiPolicyResponse;
+import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 
 import java.util.List;
 
@@ -19,6 +21,11 @@ public interface ApiPolicyService {
      * 获取所有API策略
      */
     List<ApiPolicyResponse> getAll();
+
+    /**
+     * 分页获取API策略
+     */
+    PageResponse<ApiPolicyResponse> getPage(ApiPolicyQueryRequest request);
 
     /**
      * 根据ID获取API策略

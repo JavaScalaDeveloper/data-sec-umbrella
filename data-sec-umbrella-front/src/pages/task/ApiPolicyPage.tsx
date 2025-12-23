@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Typography, 
   Table, 
   Button, 
   Space, 
@@ -11,13 +10,11 @@ import {
   Modal, 
   Form, 
   Select, 
-  InputNumber, 
   Switch, 
   Popconfirm,
   message,
   Card,
   Tabs,
-  Divider,
   Tooltip
 } from 'antd';
 import { 
@@ -25,18 +22,17 @@ import {
   EditOutlined, 
   DeleteOutlined, 
   SearchOutlined,
-  MinusCircleOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import API_CONFIG from '../../config/apiConfig.ts';
 
-const { Title } = Typography;
 const { Option } = Select;
 
 // API调用函数
 const fetchApiPolicies = async (params: any) => {
   try {
-    const response = await fetch('/api/api-policy/list', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.API_POLICY.LIST}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,7 +53,7 @@ const fetchApiPolicies = async (params: any) => {
 
 const getApiPolicyById = async (id: number) => {
   try {
-    const response = await fetch('/api/api-policy/get', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.API_POLICY.GET}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,7 +74,7 @@ const getApiPolicyById = async (id: number) => {
 
 const createApiPolicy = async (data: any) => {
   try {
-    const response = await fetch('/api/api-policy/create', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.API_POLICY.CREATE}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -99,7 +95,7 @@ const createApiPolicy = async (data: any) => {
 
 const updateApiPolicy = async (data: any) => {
   try {
-    const response = await fetch('/api/api-policy/update', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.API_POLICY.UPDATE}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -120,7 +116,7 @@ const updateApiPolicy = async (data: any) => {
 
 const deleteApiPolicy = async (id: number) => {
   try {
-    const response = await fetch('/api/api-policy/delete', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.API_POLICY.DELETE}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -147,6 +143,8 @@ const ApiPolicyPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchText, setSearchText] = useState('');
+  const [policyCode, setPolicyCode] = useState('');
+  const [sensitivityLevel, setSensitivityLevel] = useState<number | undefined>();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
   const [rules, setRules] = useState<any[]>([]);
@@ -155,13 +153,15 @@ const ApiPolicyPage: React.FC = () => {
   const navigate = useNavigate();
 
   // 加载数据
-  const loadPolicyData = async () => {
+  const loadPolicyData = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
-        pageNum: currentPage,
-        pageSize: pageSize,
+        current: currentPage,
+        size: pageSize,
+        policyCode: policyCode,
         policyName: searchText,
+        sensitivityLevel: sensitivityLevel,
       };
       const data = await fetchApiPolicies(params);
       setPolicyData(data.records || []);
@@ -172,15 +172,24 @@ const ApiPolicyPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, policyCode, searchText, sensitivityLevel]);
 
   // 组件挂载时加载数据
   useEffect(() => {
     loadPolicyData();
-  }, [currentPage, pageSize]);
+  }, [loadPolicyData]);
 
   // 搜索处理
   const handleSearch = () => {
+    setCurrentPage(1);
+    loadPolicyData();
+  };
+
+  // 重置搜索条件
+  const handleReset = () => {
+    setPolicyCode('');
+    setSearchText('');
+    setSensitivityLevel(undefined);
     setCurrentPage(1);
     loadPolicyData();
   };
@@ -347,8 +356,13 @@ const ApiPolicyPage: React.FC = () => {
         // 从后端获取完整的策略数据
         const policyData = await getApiPolicyById(record.id);
         form.setFieldsValue({
-          ...policyData,
-          hideExample: !!policyData.hideExample
+          policyCode: policyData.policyCode,
+          policyName: policyData.policyName,
+          description: policyData.description,
+          sensitivityLevel: policyData.sensitivityLevel,
+          hideExample: !!policyData.hideExample,
+          ruleExpression: policyData.ruleExpression,
+          aiRules: policyData.aiRule  // 注意：后端是aiRule，前端表单是aiRules
         });
         
         // 初始化规则数据
@@ -416,22 +430,28 @@ const ApiPolicyPage: React.FC = () => {
       }
       
       const submitData = {
-        ...values,
+        policyCode: values.policyCode,
+        policyName: values.policyName,
+        description: values.description,
+        sensitivityLevel: values.sensitivityLevel || 1,
         hideExample: values.hideExample ? 1 : 0,  // 将布尔值转换为整数
+        ruleExpression: values.ruleExpression,
+        aiRule: values.aiRules,  // 注意：前端表单字段是aiRules，后端是aiRule
         classificationRules: JSON.stringify(rules),
-        validationData: JSON.stringify(apiRulesData),
         status: 1  // 默认启用状态
       };
       
-      let result;
-      if (editingRecord) {
+      if (editingRecord && editingRecord.id) {
         // 编辑
-        submitData.id = editingRecord.id;
-        result = await updateApiPolicy(submitData);
+        let updateData = {
+        ...submitData,
+        id: editingRecord.id
+      };
+        await updateApiPolicy(updateData);
         message.success('编辑成功');
       } else {
         // 新增
-        result = await createApiPolicy(submitData);
+        await createApiPolicy(submitData);
         message.success('新增成功');
       }
       
@@ -463,14 +483,29 @@ const ApiPolicyPage: React.FC = () => {
       key: 'id',
     },
     {
-      title: '策略code',
+      title: '策略编码',
+      dataIndex: 'policyCode',
+      key: 'policyCode',
+    },
+    {
+      title: '策略名称',
       dataIndex: 'policyName',
       key: 'policyName',
     },
     {
-      title: '策略名',
+      title: '策略描述',
       dataIndex: 'description',
       key: 'description',
+    },
+    {
+      title: '敏感等级',
+      dataIndex: 'sensitivityLevel',
+      key: 'sensitivityLevel',
+      render: (level: number) => (
+        <Tag color={level <= 2 ? 'green' : level <= 4 ? 'orange' : 'red'}>
+          {level}
+        </Tag>
+      )
     },
     {
       title: '状态',
@@ -541,14 +576,42 @@ const ApiPolicyPage: React.FC = () => {
       
       <Row justify="space-between" align="middle" style={{ marginBottom: 16, marginTop: 16 }}>
         <Col>
-          <Input
-            placeholder="搜索策略名称"
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onPressEnter={handleSearch}
-            style={{ width: 250 }}
-          />
+          <Space>
+            <Input
+              placeholder="策略编码"
+              value={policyCode}
+              onChange={(e) => setPolicyCode(e.target.value)}
+              onPressEnter={handleSearch}
+              style={{ width: 150 }}
+            />
+            <Input
+              placeholder="策略名称"
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onPressEnter={handleSearch}
+              style={{ width: 200 }}
+            />
+            <Select
+              placeholder="敏感等级"
+              value={sensitivityLevel}
+              onChange={(value) => setSensitivityLevel(value)}
+              style={{ width: 120 }}
+              allowClear
+            >
+              <Option value={1}>1 - 低敏感</Option>
+              <Option value={2}>2 - 中低敏感</Option>
+              <Option value={3}>3 - 中敏感</Option>
+              <Option value={4}>4 - 中高敏感</Option>
+              <Option value={5}>5 - 高敏感</Option>
+            </Select>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+              搜索
+            </Button>
+            <Button onClick={handleReset}>
+              重置
+            </Button>
+          </Space>
         </Col>
         <Col>
           <Button 
@@ -600,6 +663,15 @@ const ApiPolicyPage: React.FC = () => {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
+                name="policyCode"
+                label="策略编码"
+                rules={[{ required: true, message: '请输入策略编码!' }]}
+              >
+                <Input placeholder="请输入策略编码" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
                 name="policyName"
                 label="策略名称"
                 rules={[{ required: true, message: '请输入策略名称!' }]}
@@ -607,6 +679,9 @@ const ApiPolicyPage: React.FC = () => {
                 <Input placeholder="请输入策略名称" />
               </Form.Item>
             </Col>
+          </Row>
+          
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="description"
@@ -614,6 +689,21 @@ const ApiPolicyPage: React.FC = () => {
                 rules={[{ required: true, message: '请输入策略描述!' }]}
               >
                 <Input placeholder="请输入策略描述" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="sensitivityLevel"
+                label="敏感等级"
+                rules={[{ required: true, message: '请选择敏感等级!' }]}
+              >
+                <Select placeholder="请选择敏感等级">
+                  <Option value={1}>1 - 低敏感</Option>
+                  <Option value={2}>2 - 中低敏感</Option>
+                  <Option value={3}>3 - 中敏感</Option>
+                  <Option value={4}>4 - 中高敏感</Option>
+                  <Option value={5}>5 - 高敏感</Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -814,7 +904,7 @@ const ApiPolicyPage: React.FC = () => {
               ]}
               dataSource={apiRulesData}
               pagination={false}
-              rowKey={(record, index) => index}
+              rowKey={(record, index) => index || 0}
             />
           </Form.Item>
         </Form>

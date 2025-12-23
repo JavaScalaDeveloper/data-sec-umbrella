@@ -4,6 +4,7 @@ import com.arelore.data.sec.umbrella.server.common.Result;
 import com.arelore.data.sec.umbrella.server.dto.request.MessagePolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.dto.request.MessagePolicyRequest;
 import com.arelore.data.sec.umbrella.server.dto.response.MessagePolicyResponse;
+import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.service.MessagePolicyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,9 +34,9 @@ public class MessagePolicyController {
     }
 
     @PostMapping("/list")
-    public Result<List<MessagePolicyResponse>> list() {
-        List<MessagePolicyResponse> list = messagePolicyService.getAll();
-        return Result.success(list);
+    public Result<PageResponse<MessagePolicyResponse>> list(@RequestBody MessagePolicyQueryRequest request) {
+        PageResponse<MessagePolicyResponse> pageResponse = messagePolicyService.getPage(request);
+        return Result.success(pageResponse);
     }
 
     @PostMapping("/getById")

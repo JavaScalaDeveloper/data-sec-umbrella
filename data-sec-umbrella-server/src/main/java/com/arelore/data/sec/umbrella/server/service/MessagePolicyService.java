@@ -1,7 +1,9 @@
 package com.arelore.data.sec.umbrella.server.service;
 
+import com.arelore.data.sec.umbrella.server.dto.request.MessagePolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.dto.request.MessagePolicyRequest;
 import com.arelore.data.sec.umbrella.server.dto.response.MessagePolicyResponse;
+import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 
 import java.util.List;
 
@@ -19,6 +21,11 @@ public interface MessagePolicyService {
      * 获取所有消息策略
      */
     List<MessagePolicyResponse> getAll();
+
+    /**
+     * 分页获取消息策略
+     */
+    PageResponse<MessagePolicyResponse> getPage(MessagePolicyQueryRequest request);
 
     /**
      * 根据ID获取消息策略

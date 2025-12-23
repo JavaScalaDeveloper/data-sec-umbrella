@@ -16,6 +16,7 @@ const API_CONFIG = {
     // API策略相关
     API_POLICY: {
       LIST: '/api/api-policy/list',
+      GET: '/api/api-policy/getById',
       CREATE: '/api/api-policy/create',
       UPDATE: '/api/api-policy/update',
       DELETE: '/api/api-policy/delete'
@@ -24,6 +25,7 @@ const API_CONFIG = {
     // 消息策略相关
     MESSAGE_POLICY: {
       LIST: '/api/message-policy/list',
+      GET: '/api/message-policy/getById',
       CREATE: '/api/message-policy/create',
       UPDATE: '/api/message-policy/update',
       DELETE: '/api/message-policy/delete'

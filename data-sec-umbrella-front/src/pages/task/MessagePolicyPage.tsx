@@ -27,6 +27,7 @@ import {
   PlayCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import API_CONFIG from '../../config/apiConfig.ts';
 
 const { Option } = Select;
 const { Title } = Typography;
@@ -34,8 +35,8 @@ const { Title } = Typography;
 // 定义消息策略接口
 interface MessagePolicy {
   id?: number;
-  code: string;
-  chineseName: string;
+  policyCode: string;
+  policyName: string;
   description: string;
   sensitivityLevel: number;
   hideExample: number;
@@ -59,8 +60,8 @@ interface PageResponseDTO<T> {
 
 // 查询请求DTO
 interface MessagePolicyQueryDTO {
-  pageNum: number;
-  pageSize: number;
+  current: number;
+  size: number;
   policyName?: string;
 }
 
@@ -84,7 +85,7 @@ const MessagePolicyPage: React.FC = () => {
   // API调用函数
   const fetchMessagePolicies = async (params: MessagePolicyQueryDTO) => {
     try {
-      const response = await fetch('/api/message-policy/list', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGE_POLICY.LIST}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +106,7 @@ const MessagePolicyPage: React.FC = () => {
 
   const getMessagePolicyById = async (id: number) => {
     try {
-      const response = await fetch('/api/message-policy/get', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGE_POLICY.GET}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +127,7 @@ const MessagePolicyPage: React.FC = () => {
 
   const createMessagePolicy = async (policy: MessagePolicy) => {
     try {
-      const response = await fetch('/api/message-policy/create', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGE_POLICY.CREATE}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +148,7 @@ const MessagePolicyPage: React.FC = () => {
 
   const updateMessagePolicy = async (policy: MessagePolicy) => {
     try {
-      const response = await fetch('/api/message-policy/update', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGE_POLICY.UPDATE}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +169,7 @@ const MessagePolicyPage: React.FC = () => {
 
   const deleteMessagePolicy = async (id: number) => {
     try {
-      const response = await fetch('/api/message-policy/delete', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGE_POLICY.DELETE}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,8 +193,8 @@ const MessagePolicyPage: React.FC = () => {
     setLoading(true);
     try {
       const params: MessagePolicyQueryDTO = {
-        pageNum: currentPage,
-        pageSize: pageSize,
+        current: currentPage,
+        size: pageSize,
         policyName: searchText,
       };
       const data = await fetchMessagePolicies(params);
@@ -378,8 +379,13 @@ const MessagePolicyPage: React.FC = () => {
         const policyData = await getMessagePolicyById(record.id);
         
         form.setFieldsValue({
-          ...policyData,
-          hideExample: policyData.hideExample === 1
+          policyCode: policyData.policyCode,
+          policyName: policyData.policyName,
+          description: policyData.description,
+          sensitivityLevel: policyData.sensitivityLevel,
+          hideExample: policyData.hideExample === 1,
+          ruleExpression: policyData.ruleExpression,
+          aiRule: policyData.aiRule
         });
         
         // 初始化规则数据
@@ -449,8 +455,13 @@ const MessagePolicyPage: React.FC = () => {
       }
       
       const submitData: MessagePolicy = {
-        ...values,
+        policyCode: values.policyCode,
+        policyName: values.policyName,
+        description: values.description,
+        sensitivityLevel: values.sensitivityLevel || 1,
         hideExample: values.hideExample ? 1 : 0,  // 将布尔值转换为整数
+        ruleExpression: values.ruleExpression,
+        aiRule: values.aiRule,
         classificationRules: JSON.stringify(rules),
         classificationRulesData: JSON.stringify(classificationRulesData),
         status: 1  // 默认启用状态
@@ -495,14 +506,19 @@ const MessagePolicyPage: React.FC = () => {
   // 策略表格列定义
   const policyColumns = [
     {
-      title: '策略code',
-      dataIndex: 'code',
-      key: 'code',
+      title: '策略ID',
+      dataIndex: 'id',
+      key: 'id',
     },
     {
-      title: '策略名',
-      dataIndex: 'chineseName',
-      key: 'chineseName',
+      title: '策略编码',
+      dataIndex: 'policyCode',
+      key: 'policyCode',
+    },
+    {
+      title: '策略名称',
+      dataIndex: 'policyName',
+      key: 'policyName',
     },
     {
       title: '描述',
@@ -639,20 +655,20 @@ const MessagePolicyPage: React.FC = () => {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="code"
-                label="策略code"
-                rules={[{ required: true, message: '请输入策略code!' }]}
+                name="policyCode"
+                label="策略编码"
+                rules={[{ required: true, message: '请输入策略编码!' }]}
               >
-                <Input placeholder="请输入策略code" />
+                <Input placeholder="请输入策略编码" />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                name="chineseName"
-                label="策略名"
-                rules={[{ required: true, message: '请输入策略名!' }]}
+                name="policyName"
+                label="策略名称"
+                rules={[{ required: true, message: '请输入策略名称!' }]}
               >
-                <Input placeholder="请输入策略名" />
+                <Input placeholder="请输入策略名称" />
               </Form.Item>
             </Col>
           </Row>

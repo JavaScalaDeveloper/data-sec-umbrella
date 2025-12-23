@@ -4,6 +4,7 @@ import com.arelore.data.sec.umbrella.server.common.Result;
 import com.arelore.data.sec.umbrella.server.dto.request.ApiPolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.dto.request.ApiPolicyRequest;
 import com.arelore.data.sec.umbrella.server.dto.response.ApiPolicyResponse;
+import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.service.ApiPolicyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -30,9 +31,9 @@ public class ApiPolicyController {
     }
 
     @PostMapping("/list")
-    public Result<List<ApiPolicyResponse>> list() {
-        List<ApiPolicyResponse> list = apiPolicyService.getAll();
-        return Result.success(list);
+    public Result<PageResponse<ApiPolicyResponse>> list(@RequestBody ApiPolicyQueryRequest request) {
+        PageResponse<ApiPolicyResponse> pageResponse = apiPolicyService.getPage(request);
+        return Result.success(pageResponse);
     }
 
     @PostMapping("/getById")

@@ -1,6 +1,7 @@
 package com.arelore.data.sec.umbrella.server.dto.request;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 消息策略查询请求
@@ -9,7 +10,8 @@ import lombok.Data;
  * @since 2025-12-24
  */
 @Data
-public class MessagePolicyQueryRequest {
+@EqualsAndHashCode(callSuper = true)
+public class MessagePolicyQueryRequest extends PageRequest {
     /**
      * 策略ID
      */
@@ -19,4 +21,9 @@ public class MessagePolicyQueryRequest {
      * 策略编码
      */
     private String policyCode;
+    
+    /**
+     * 策略名称
+     */
+    private String policyName;
 }
