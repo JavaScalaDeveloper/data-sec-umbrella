@@ -11,7 +11,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -33,23 +32,23 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
     public PageResponse<DatabasePolicyResponse> getPage(DatabasePolicyQueryRequest request) {
         // 构建查询条件
         LambdaQueryWrapper<DatabasePolicy> queryWrapper = new LambdaQueryWrapper<>();
-
+        
         // 如果有策略编码，添加查询条件
         if (request.getPolicyCode() != null && !request.getPolicyCode().trim().isEmpty()) {
             queryWrapper.like(DatabasePolicy::getPolicyCode, request.getPolicyCode());
         }
-
+        
         // 创建分页对象
         Page<DatabasePolicy> page = new Page<>(request.getCurrent(), request.getSize());
-
+        
         // 执行分页查询
         IPage<DatabasePolicy> pageResult = this.page(page, queryWrapper);
-
+        
         // 转换为响应对象
         List<DatabasePolicyResponse> records = pageResult.getRecords().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
-
+        
         // 构建分页响应
         return new PageResponse<>(
                 records,
@@ -68,15 +67,23 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
     @Override
     public DatabasePolicyResponse getById(Long id) {
         DatabasePolicy entity = super.getById(id);
-
+        
         if (entity != null) {
             // 转换为响应对象
             DatabasePolicyResponse response = new DatabasePolicyResponse();
-            BeanUtils.copyProperties(entity, response);
+            response.setId(entity.getId());
+            response.setPolicyCode(entity.getPolicyCode());
+            response.setPolicyName(entity.getPolicyName());
+            response.setDescription(entity.getDescription());
+            response.setSensitivityLevel(entity.getSensitivityLevel());
+            response.setHideExample(entity.getHideExample());
+            response.setClassificationRules(entity.getClassificationRules());
 
+            response.setCreateTime(entity.getCreateTime());
+            response.setModifyTime(entity.getModifyTime());
             return response;
         }
-
+        
         return null;
     }
 
@@ -85,34 +92,48 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         LambdaQueryWrapper<DatabasePolicy> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(DatabasePolicy::getPolicyCode, policyCode);
         DatabasePolicy entity = this.getOne(queryWrapper);
-
+        
         if (entity != null) {
             return convertToResponse(entity);
         }
-
+        
         return null;
     }
 
     @Override
     public Long create(DatabasePolicyRequest databasePolicyRequest) {
         DatabasePolicy entity = new DatabasePolicy();
-        BeanUtils.copyProperties(databasePolicyRequest, entity);
+        entity.setPolicyCode(databasePolicyRequest.getPolicyCode());
+        entity.setPolicyName(databasePolicyRequest.getPolicyName());
+        entity.setDescription(databasePolicyRequest.getDescription());
+        entity.setSensitivityLevel(databasePolicyRequest.getSensitivityLevel());
+        entity.setHideExample(databasePolicyRequest.getHideExample());
+        entity.setClassificationRules(databasePolicyRequest.getClassificationRules());
 
+        entity.setCreateTime(LocalDateTime.now());
+        entity.setModifyTime(LocalDateTime.now());
+        
         boolean success = this.save(entity);
         if (success) {
             return entity.getId();
         }
-
+        
         return null;
     }
 
     @Override
     public boolean update(Long id, DatabasePolicyRequest databasePolicyRequest) {
         DatabasePolicy entity = new DatabasePolicy();
-        BeanUtils.copyProperties(databasePolicyRequest, entity);
-
         entity.setId(id);
+        entity.setPolicyCode(databasePolicyRequest.getPolicyCode());
+        entity.setPolicyName(databasePolicyRequest.getPolicyName());
+        entity.setDescription(databasePolicyRequest.getDescription());
+        entity.setSensitivityLevel(databasePolicyRequest.getSensitivityLevel());
+        entity.setHideExample(databasePolicyRequest.getHideExample());
+        entity.setClassificationRules(databasePolicyRequest.getClassificationRules());
 
+        entity.setModifyTime(LocalDateTime.now());
+        
         return this.updateById(entity);
     }
 
@@ -123,8 +144,16 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
 
     private DatabasePolicyResponse convertToResponse(DatabasePolicy entity) {
         DatabasePolicyResponse response = new DatabasePolicyResponse();
-        BeanUtils.copyProperties(entity, response);
+        response.setId(entity.getId());
+        response.setPolicyCode(entity.getPolicyCode());
+        response.setPolicyName(entity.getPolicyName());
+        response.setDescription(entity.getDescription());
+        response.setSensitivityLevel(entity.getSensitivityLevel());
+        response.setHideExample(entity.getHideExample());
+        response.setClassificationRules(entity.getClassificationRules());
 
+        response.setCreateTime(entity.getCreateTime());
+        response.setModifyTime(entity.getModifyTime());
         return response;
     }
 }

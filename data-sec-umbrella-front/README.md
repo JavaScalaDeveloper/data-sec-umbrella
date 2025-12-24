@@ -39,6 +39,32 @@
 
 您不必永远使用 `eject`。精选的功能集适用于小型和中间部署，如果需要，您不应该觉得有义务使用此功能。但是，我们理解如果此工具在您准备好时无法自定义，它就不会有用。
 
+## 了解更多
+
+您可以在 [Create React App 文档](https://facebook.github.io/create-react-app/docs/getting-started)中了解更多。
+
+要学习 React，请查看 [React 文档](https://reactjs.org/)。
+
+### 代码分割
+
+本节已移至[此处](https://facebook.github.io/create-react-app/docs/code-splitting)
+
+### 分析包大小
+
+本节已移至[此处](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+
+### 制作渐进式 Web 应用
+
+本节已移至[此处](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+
+### 高级配置
+
+本节已移至[此处](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+
+### `npm run build` 无法缩小
+
+本节已移至[此处](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
 ## 项目结构
 
 - `src/config/` - 配置文件，包括API配置

@@ -25,7 +25,7 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import API_CONFIG from '../../config/apiConfig.ts';
+import API_CONFIG from '../../../config/apiConfig.ts';
 
 const { Option } = Select;
 
@@ -233,6 +233,7 @@ const ApiPolicyPage: React.FC = () => {
           style={{ width: '100%' }}
           onChange={(val) => handleRuleChange(record.id, 'conditionObject', val)}
         >
+          <Option value="域名/IP">域名/IP</Option>
           <Option value="API路径">API路径</Option>
           <Option value="请求头">请求头</Option>
           <Option value="请求体">请求体</Option>
@@ -782,6 +783,22 @@ const ApiPolicyPage: React.FC = () => {
             </div>
             <Table
               columns={[
+                {
+                  title: '域名/IP',
+                  dataIndex: 'domain',
+                  key: 'domain',
+                  render: (_, record, index) => (
+                    <Input
+                      value={record.apiPath}
+                      onChange={(e) => {
+                        const newData = [...apiRulesData];
+                        newData[index].apiPath = e.target.value;
+                        setApiRulesData(newData);
+                      }}
+                      placeholder="请输入域名/IP"
+                    />
+                  )
+                },
                 {
                   title: 'API路径',
                   dataIndex: 'apiPath',

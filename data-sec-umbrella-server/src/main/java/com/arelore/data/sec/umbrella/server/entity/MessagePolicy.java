@@ -1,6 +1,9 @@
 package com.arelore.data.sec.umbrella.server.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,78 +18,84 @@ public class MessagePolicy {
     /**
      * 主键ID
      */
-    @TableId(value = "id", type = IdType.AUTO)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
     /**
-     * 创建时间
-     */
-    @TableField(value = "create_time", insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
-    private LocalDateTime createTime;
-
-    /**
-     * 修改时间
-     */
-    @TableField(value = "modify_time", insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
-    private LocalDateTime modifyTime;
-
-    /**
-     * 创建人
-     */
-    @TableField("creator")
-    private String creator;
-
-    /**
-     * 修改人
-     */
-    @TableField("modifier")
-    private String modifier;
-
-    /**
-     * 策略code
+     * 策略编码
      */
     @TableField("policy_code")
     private String policyCode;
 
     /**
-     * 策略名
+     * 策略名称
      */
     @TableField("policy_name")
     private String policyName;
 
     /**
-     * 描述
+     * 策略描述
      */
     @TableField("description")
     private String description;
 
     /**
-     * 敏感等级 1-5，越高代表越敏感
+     * 策略状态（1-启用，0-禁用）
      */
-    @TableField("sensitivity_level")
-    private Integer sensitivityLevel;
+    @TableField("status")
+    private Integer status;
 
     /**
-     * 隐藏样例 0-否 1-是
+     * 分类规则（JSON格式）
+     */
+    @TableField("classification_rules")
+    private String classificationRules;
+
+    /**
+     * 规则表达式（JSON格式）
+     */
+    @TableField("rule_expressions")
+    private String ruleExpressions;
+
+    /**
+     * AI规则
+     */
+    @TableField("ai_rules")
+    private String aiRules;
+
+    /**
+     * 验证数据（JSON格式）
+     */
+    @TableField("validation_data")
+    private String validationData;
+
+    /**
+     * 隐藏样例（1-是，0-否）
      */
     @TableField("hide_example")
     private Integer hideExample;
 
     /**
-     * 规则表达式
+     * 创建时间
      */
-    @TableField("rule_expression")
-    private String ruleExpression;
+    @TableField("create_time")
+    private LocalDateTime createTime;
 
     /**
-     * AI规则
+     * 更新时间
      */
-    @TableField("ai_rule")
-    private String aiRule;
+    @TableField("update_time")
+    private LocalDateTime updateTime;
 
     /**
-     * 分类规则
+     * 创建者
      */
-    @TableField("classification_rules")
-    private String classificationRules;
+    @TableField("creator")
+    private String creator;
+
+    /**
+     * 更新者
+     */
+    @TableField("updater")
+    private String updater;
 }

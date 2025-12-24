@@ -26,7 +26,7 @@ import {
   PlayCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import API_CONFIG from '../../config/apiConfig.ts';
+import API_CONFIG from '../../../config/apiConfig.ts';
 
 const { Title } = Typography;
 const { Option } = Select;

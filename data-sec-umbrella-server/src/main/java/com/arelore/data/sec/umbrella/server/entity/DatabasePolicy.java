@@ -84,4 +84,22 @@ public class DatabasePolicy {
      */
     @TableField("classification_rules")
     private String classificationRules;
+
+    /**
+     * 规则表达式（JSON格式）
+     */
+    @TableField("rule_expressions")
+    private String ruleExpressions;
+
+    /**
+     * AI规则（JSON格式）
+     */
+    @TableField("ai_rules")
+    private String aiRules;
+
+    /**
+     * 验证数据（JSON格式）
+     */
+    @TableField("validation_data")
+    private String validationData;
 }
