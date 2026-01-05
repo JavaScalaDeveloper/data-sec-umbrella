@@ -219,9 +219,56 @@ data-sec-umbrella/
 
 ## 联系我们
 
-- 项目主页: https://github.com/your-org/data-sec-umbrella
-- 问题反馈: https://github.com/your-org/data-sec-umbrella/issues
-- 邮箱: data-security@example.com
+- 项目主页: https://github.com/JavaScalaDeveloper/data-sec-umbrella
+- 问题反馈: https://github.com/JavaScalaDeveloperdata-sec-umbrella/issues
+- 邮箱: 544789628@qq.com
+
+## 交互界面展示
+
+### 策略管理界面
+
+#### 数据库策略列表
+![数据库策略列表](/data-sec-umbrella-front/public/images/交互图/策略管理/数据库策略列表.png)
+- 展示所有数据库安全策略的列表
+- 支持策略的查询、创建、编辑和删除操作
+- 显示策略名称、数据库类型、创建时间等关键信息
+- 提供策略启用/禁用功能
+
+#### 数据库策略配置
+![数据库策略配置](/data-sec-umbrella-front/public/images/交互图/策略管理/数据库策略配置.png)
+- 策略基本信息配置（名称、描述、适用数据库类型）
+- 安全配置（加密算法、访问控制、审计日志）
+- 检测规则配置（敏感数据识别、SQL注入防护、异常访问检测）
+- 响应策略配置（告警级别、通知方式、阻断策略）
+
+## 快速启动脚本
+
+### 前端一键启动
+
+项目提供了便捷的前端启动脚本 `start.sh`，位于 `/data-sec-umbrella-front` 目录下。
+
+#### 使用方法：
+
+1. 进入前端项目目录：
+   ```bash
+   cd /Users/huang/Documents/Workspaces/data-sec-umbrella/data-sec-umbrella-front
+   ```
+
+2. 给脚本添加执行权限（首次使用）：
+   ```bash
+   chmod +x start.sh
+   ```
+
+3. 执行启动脚本：
+   ```bash
+   ./start.sh
+   ```
+
+#### 脚本功能：
+- 自动检查 Node.js 和 npm 环境
+- 自动安装项目依赖（如果 node_modules 不存在）
+- 启动前端开发服务器
+- 显示访问地址和停止服务器的方法
 
 ## 更新日志
 

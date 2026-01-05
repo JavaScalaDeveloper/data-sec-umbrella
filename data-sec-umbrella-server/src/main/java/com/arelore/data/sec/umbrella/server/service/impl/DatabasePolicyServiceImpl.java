@@ -78,6 +78,8 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
             response.setSensitivityLevel(entity.getSensitivityLevel());
             response.setHideExample(entity.getHideExample());
             response.setClassificationRules(entity.getClassificationRules());
+            response.setRuleExpression(entity.getRuleExpression());
+            response.setAiRule(entity.getAiRule());
 
             response.setCreateTime(entity.getCreateTime());
             response.setModifyTime(entity.getModifyTime());
@@ -109,6 +111,8 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         entity.setSensitivityLevel(databasePolicyRequest.getSensitivityLevel());
         entity.setHideExample(databasePolicyRequest.getHideExample());
         entity.setClassificationRules(databasePolicyRequest.getClassificationRules());
+        entity.setRuleExpression(databasePolicyRequest.getRuleExpression());
+        entity.setAiRule(databasePolicyRequest.getAiRule());
 
         entity.setCreateTime(LocalDateTime.now());
         entity.setModifyTime(LocalDateTime.now());
@@ -131,6 +135,8 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         entity.setSensitivityLevel(databasePolicyRequest.getSensitivityLevel());
         entity.setHideExample(databasePolicyRequest.getHideExample());
         entity.setClassificationRules(databasePolicyRequest.getClassificationRules());
+        entity.setRuleExpression(databasePolicyRequest.getRuleExpression());
+        entity.setAiRule(databasePolicyRequest.getAiRule());
 
         entity.setModifyTime(LocalDateTime.now());
         
@@ -151,6 +157,8 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         response.setSensitivityLevel(entity.getSensitivityLevel());
         response.setHideExample(entity.getHideExample());
         response.setClassificationRules(entity.getClassificationRules());
+        response.setRuleExpression(entity.getRuleExpression());
+        response.setAiRule(entity.getAiRule());
 
         response.setCreateTime(entity.getCreateTime());
         response.setModifyTime(entity.getModifyTime());

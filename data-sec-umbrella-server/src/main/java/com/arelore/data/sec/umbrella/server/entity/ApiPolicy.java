@@ -22,6 +22,30 @@ public class ApiPolicy {
     private Long id;
 
     /**
+     * 创建时间
+     */
+    @TableField("create_time")
+    private LocalDateTime createTime;
+
+    /**
+     * 修改时间
+     */
+    @TableField("modify_time")
+    private LocalDateTime modifyTime;
+
+    /**
+     * 创建人
+     */
+    @TableField("creator")
+    private String creator;
+
+    /**
+     * 修改人
+     */
+    @TableField("modifier")
+    private String modifier;
+
+    /**
      * 策略编码
      */
     @TableField("policy_code")
@@ -40,34 +64,10 @@ public class ApiPolicy {
     private String description;
 
     /**
-     * 策略状态（1-启用，0-禁用）
+     * 敏感等级 1-5，越高代表越敏感
      */
-    @TableField("status")
-    private Integer status;
-
-    /**
-     * 分类规则（JSON格式）
-     */
-    @TableField("classification_rules")
-    private String classificationRules;
-
-    /**
-     * 规则表达式（JSON格式）
-     */
-    @TableField("rule_expressions")
-    private String ruleExpressions;
-
-    /**
-     * AI规则
-     */
-    @TableField("ai_rules")
-    private String aiRules;
-
-    /**
-     * 验证数据（JSON格式）
-     */
-    @TableField("validation_data")
-    private String validationData;
+    @TableField("sensitivity_level")
+    private Integer sensitivityLevel;
 
     /**
      * 隐藏样例（1-是，0-否）
@@ -76,26 +76,20 @@ public class ApiPolicy {
     private Integer hideExample;
 
     /**
-     * 创建时间
+     * 分类规则（JSON格式）
      */
-    @TableField("create_time")
-    private LocalDateTime createTime;
+    @TableField("classification_rules")
+    private String classificationRules;
 
     /**
-     * 更新时间
+     * 规则表达式
      */
-    @TableField("update_time")
-    private LocalDateTime updateTime;
+    @TableField("rule_expression")
+    private String ruleExpression;
 
     /**
-     * 创建者
+     * AI规则
      */
-    @TableField("creator")
-    private String creator;
-
-    /**
-     * 更新者
-     */
-    @TableField("updater")
-    private String updater;
+    @TableField("ai_rule")
+    private String aiRule;
 }
