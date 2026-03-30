@@ -1,8 +1,6 @@
 import React from 'react';
-import { Typography, Table, Tag, Space, Button, Input, Row, Col, Card } from 'antd';
+import { Table, Tag, Space, Button, Input, Row, Col, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
-
-const { Title } = Typography;
 
 // 模拟集群数据
 const clusterData = [

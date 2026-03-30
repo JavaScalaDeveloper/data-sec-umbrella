@@ -2,7 +2,7 @@ package com.arelore.data.sec.umbrella.server.dto.request;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * API策略ID请求

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ApiTabContent from './ApiTabContent.tsx';
@@ -8,14 +8,14 @@ const ApiPage: React.FC = () => {
   const navigate = useNavigate();
   
   // 从URL路径中获取当前tab，默认为'domain'
-  const getPathTab = () => {
+  const getPathTab = useCallback(() => {
     const pathParts = location.pathname.split('/');
     // 检查路径是否已经包含tab信息
     if (pathParts.length >= 4 && ['domain', 'api'].includes(pathParts[pathParts.length - 1])) {
       return pathParts[pathParts.length - 1];
     }
     return 'domain';
-  };
+  }, [location.pathname]);
   
   const [activeTab, setActiveTab] = useState(getPathTab());
 
@@ -25,7 +25,7 @@ const ApiPage: React.FC = () => {
     if (pathTab !== activeTab) {
       setActiveTab(pathTab);
     }
-  }, [location.pathname]);
+  }, [location.pathname, activeTab, getPathTab]);
 
   const handleTabChange = (key: string) => {
     setActiveTab(key);

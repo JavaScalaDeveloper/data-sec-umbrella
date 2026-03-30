@@ -25,7 +25,7 @@ const DatabasePage: React.FC = () => {
     if (pathTab !== activeTab) {
       setActiveTab(pathTab);
     }
-  }, [location.pathname]);
+  }, [location.pathname, activeTab, getPathTab]);
 
   const handleTabChange = (key: string) => {
     setActiveTab(key);
