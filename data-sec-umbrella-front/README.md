@@ -1,89 +1,63 @@
-# 数据安全伞前端项目
+# 数据安全保护伞
 
-这个项目通过 [Create React App](https://github.com/facebook/create-react-app) 引导创建。
+## 项目介绍
 
-## 可用脚本
+数据安全保护伞是一个全面的数据安全管理平台，旨在保护企业数据资产的安全性和合规性。该平台提供了多种安全防护功能，包括数据库安全、API安全和MQ安全，帮助企业实现全面的数据安全管控。
 
-在项目目录中，您可以运行：
+## 核心功能
 
-### `npm start`
+### 数据库安全保护伞
+- **策略管理**：支持MySQL、Clickhouse等多种数据库的安全策略配置
+- **敏感数据检测**：自动识别和分类数据库中的敏感数据
+- **数据脱敏**：对敏感数据进行脱敏处理，保护数据隐私
+- **数据加密**：对敏感数据进行加密存储，防止数据泄露
+- **规则验证**：支持规则测试和验证，确保规则的正确性
 
-以开发模式运行应用程序。\
-打开 [http://localhost:3000](http://localhost:3000) 在浏览器中查看它。
+### API安全保护伞
+- **API访问控制**：对API访问进行权限控制和身份验证
+- **API行为监控**：监控API调用行为，识别异常访问
+- **API流量控制**：限制API访问频率，防止恶意攻击
+- **API数据安全**：对API传输的数据进行加密和脱敏
 
-页面会在您进行更改时重新加载。\
-您也可能在控制台中看到任何 lint 错误。
+### MQ安全保护伞
+- **消息加密**：对消息队列中的数据进行加密传输和存储
+- **消息验证**：验证消息的完整性和真实性
+- **消息过滤**：过滤敏感信息，防止敏感数据泄露
+- **消息审计**：记录消息流转日志，便于安全审计
 
-### `npm test`
+### 管理中心
+- **用户管理**：管理平台用户和权限
+- **角色管理**：配置用户角色和权限
+- **日志管理**：查看系统操作日志和安全事件日志
+- **系统配置**：配置系统参数和安全策略
 
-在交互式监视模式下启动测试运行器。\
-请参阅有关[运行测试](https://facebook.github.io/create-react-app/docs/running-tests)的章节以获取更多信息。
+## 技术架构
 
-### `npm run build`
+项目采用现代化的前端技术栈，提供直观的用户界面和流畅的操作体验。后端采用Java技术栈，提供高性能的API服务和数据处理能力。
 
-将应用构建到生产环境的 `build` 文件夹。\
-它正确地捆绑了 React 并在生产模式下优化了构建以获得最佳性能。
+## 部署方式
 
-构建被缩小，文件名包含哈希值。\
-您的应用已准备好部署！
+项目支持多种部署方式，包括本地开发环境、测试环境和生产环境。详细的部署文档请参考相关文档。
 
-请参阅有关[部署](https://facebook.github.io/create-react-app/docs/deployment)的章节以获取更多信息。
+## 开发指南
 
-### `npm run eject`
+### 本地开发
 
-**注意：这是一个单向操作。一旦您 `eject`，就无法返回！**
+1. 克隆项目代码
+2. 安装依赖
+3. 启动开发服务器
+4. 访问 http://localhost:3000
 
-如果您对构建工具和配置选择不满意，您可以随时 `eject`。
+### 构建部署
 
-此命令将所有配置文件和传递依赖项（webpack、Babel、ESLint 等）复制到您的项目中，因此您可以完全控制它们。除了 `eject` 之外的所有命令仍然有效，但它们将指向复制的脚本，因此您可以调整它们。此时，您就靠自己了。
+1. 执行构建命令
+2. 部署构建产物到服务器
+3. 启动应用服务
 
-您不必永远使用 `eject`。精选的功能集适用于小型和中间部署，如果需要，您不应该觉得有义务使用此功能。但是，我们理解如果此工具在您准备好时无法自定义，它就不会有用。
+## 贡献指南
 
-## 了解更多
+欢迎社区贡献代码和建议。请遵循项目的代码规范和提交流程。
 
-您可以在 [Create React App 文档](https://facebook.github.io/create-react-app/docs/getting-started)中了解更多。
+## 许可证
 
-要学习 React，请查看 [React 文档](https://reactjs.org/)。
-
-### 代码分割
-
-本节已移至[此处](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### 分析包大小
-
-本节已移至[此处](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### 制作渐进式 Web 应用
-
-本节已移至[此处](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### 高级配置
-
-本节已移至[此处](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### `npm run build` 无法缩小
-
-本节已移至[此处](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-
-## 项目结构
-
-- `src/config/` - 配置文件，包括API配置
-- `src/layouts/` - 布局组件
-- `src/pages/` - 页面组件
-  - `asset/` - 资产相关页面
-  - `task/` - 任务相关页面，包括策略配置页面
-
-## 启动项目
-
-使用以下命令启动项目：
-
-```bash
-./start.sh
-```
-
-或者手动启动：
-
-```bash
-npm install
-npm start
-```
+项目采用 MIT 许可证，详情请参阅 LICENSE 文件。
