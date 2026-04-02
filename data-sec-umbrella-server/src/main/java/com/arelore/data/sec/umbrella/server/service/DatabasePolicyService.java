@@ -2,7 +2,9 @@ package com.arelore.data.sec.umbrella.server.service;
 
 import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyRequest;
+import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyTestRulesRequest;
 import com.arelore.data.sec.umbrella.server.dto.response.DatabasePolicyResponse;
+import com.arelore.data.sec.umbrella.server.dto.response.DatabasePolicyTestRulesResponse;
 import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 
 import java.util.List;
@@ -51,4 +53,9 @@ public interface DatabasePolicyService {
      * 删除数据库策略
      */
     boolean delete(Long id);
+
+    /**
+     * 测试规则
+     */
+    DatabasePolicyTestRulesResponse testRules(DatabasePolicyTestRulesRequest request);
 }

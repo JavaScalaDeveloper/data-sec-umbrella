@@ -84,4 +84,10 @@ public class DatabasePolicy {
      */
     @TableField("ai_rule")
     private String aiRule;
+
+    /**
+     * 数据库类型
+     */
+    @TableField("database_type")
+    private String databaseType;
 }

@@ -3,7 +3,9 @@ package com.arelore.data.sec.umbrella.server.controller;
 import com.arelore.data.sec.umbrella.server.common.Result;
 import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyRequest;
+import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyTestRulesRequest;
 import com.arelore.data.sec.umbrella.server.dto.response.DatabasePolicyResponse;
+import com.arelore.data.sec.umbrella.server.dto.response.DatabasePolicyTestRulesResponse;
 import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.service.DatabasePolicyService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,5 +78,11 @@ public class DatabasePolicyController {
             return Result.success(true);
         }
         return Result.error("删除失败，策略不存在");
+    }
+
+    @PostMapping("/test-rules")
+    public Result<DatabasePolicyTestRulesResponse> testRules(@RequestBody DatabasePolicyTestRulesRequest request) {
+        DatabasePolicyTestRulesResponse response = databasePolicyService.testRules(request);
+        return Result.success(response);
     }
 }
