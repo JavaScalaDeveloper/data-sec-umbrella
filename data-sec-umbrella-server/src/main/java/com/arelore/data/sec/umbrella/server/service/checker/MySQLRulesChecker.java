@@ -56,7 +56,7 @@ public class MySQLRulesChecker extends AbstractDatabaseRulesChecker {
         
         // 测试规则表达式
         boolean ruleExpressionPassed = testRuleExpression(request.getRuleExpression(), request.getTestData(), ruleResults);
-        response.setRulePassed(response.isRulePassed() && ruleExpressionPassed);
+        response.setRulePassed(ruleExpressionPassed);
         
         // 测试AI规则
         boolean aiPassed = testAiRule(request.getAiRule(), request.getTestData());
@@ -119,7 +119,7 @@ public class MySQLRulesChecker extends AbstractDatabaseRulesChecker {
      * 测试规则表达式
      */
     private boolean testRuleExpression(String ruleExpression, List<DatabasePolicyTestRulesRequest.TestData> testData, Map<String, Boolean> ruleResults) {
-        return RuleExpressionEvaluator.testRuleExpression(ruleExpression, ruleResults);
+        return RuleExpressionEvaluator.ruleExpressionCheck(ruleExpression, ruleResults);
     }
     
     /**

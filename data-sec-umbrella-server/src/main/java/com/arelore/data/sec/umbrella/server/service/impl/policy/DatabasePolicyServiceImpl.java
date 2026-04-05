@@ -10,10 +10,12 @@ import com.arelore.data.sec.umbrella.server.entity.DatabasePolicy;
 import com.arelore.data.sec.umbrella.server.mapper.DatabasePolicyMapper;
 import com.arelore.data.sec.umbrella.server.service.DatabasePolicyService;
 import com.arelore.data.sec.umbrella.server.service.checker.RulesChecker;
+import com.arelore.data.sec.umbrella.server.service.factory.RulesCheckerFactory;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -74,20 +76,9 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         DatabasePolicy entity = super.getById(id);
         
         if (entity != null) {
-            // 转换为响应对象
+            // 使用BeanUtils.copyProperties复制所有字段，包括databaseType
             DatabasePolicyResponse response = new DatabasePolicyResponse();
-            response.setId(entity.getId());
-            response.setPolicyCode(entity.getPolicyCode());
-            response.setPolicyName(entity.getPolicyName());
-            response.setDescription(entity.getDescription());
-            response.setSensitivityLevel(entity.getSensitivityLevel());
-            response.setHideExample(entity.getHideExample());
-            response.setClassificationRules(entity.getClassificationRules());
-            response.setRuleExpression(entity.getRuleExpression());
-            response.setAiRule(entity.getAiRule());
-
-            response.setCreateTime(entity.getCreateTime());
-            response.setModifyTime(entity.getModifyTime());
+            BeanUtils.copyProperties(entity, response);
             return response;
         }
         
@@ -110,15 +101,8 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
     @Override
     public Long create(DatabasePolicyRequest databasePolicyRequest) {
         DatabasePolicy entity = new DatabasePolicy();
-        entity.setPolicyCode(databasePolicyRequest.getPolicyCode());
-        entity.setPolicyName(databasePolicyRequest.getPolicyName());
-        entity.setDescription(databasePolicyRequest.getDescription());
-        entity.setSensitivityLevel(databasePolicyRequest.getSensitivityLevel());
-        entity.setHideExample(databasePolicyRequest.getHideExample());
-        entity.setClassificationRules(databasePolicyRequest.getClassificationRules());
-        entity.setRuleExpression(databasePolicyRequest.getRuleExpression());
-        entity.setAiRule(databasePolicyRequest.getAiRule());
-
+        // 使用BeanUtils.copyProperties复制所有字段，包括databaseType
+        BeanUtils.copyProperties(databasePolicyRequest, entity);
         
         boolean success = this.save(entity);
         if (success) {
@@ -130,18 +114,16 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
 
     @Override
     public boolean update(Long id, DatabasePolicyRequest databasePolicyRequest) {
-        DatabasePolicy entity = new DatabasePolicy();
-        entity.setId(id);
-        entity.setPolicyCode(databasePolicyRequest.getPolicyCode());
-        entity.setPolicyName(databasePolicyRequest.getPolicyName());
-        entity.setDescription(databasePolicyRequest.getDescription());
-        entity.setSensitivityLevel(databasePolicyRequest.getSensitivityLevel());
-        entity.setHideExample(databasePolicyRequest.getHideExample());
-        entity.setClassificationRules(databasePolicyRequest.getClassificationRules());
-        entity.setRuleExpression(databasePolicyRequest.getRuleExpression());
-        entity.setAiRule(databasePolicyRequest.getAiRule());
-
-        return this.updateById(entity);
+        // 先查询现有记录
+        DatabasePolicy existingEntity = this.getById(id);
+        if (existingEntity == null) {
+            return false;
+        }
+        
+        // 使用BeanUtils.copyProperties复制所有字段，包括databaseType
+        BeanUtils.copyProperties(databasePolicyRequest, existingEntity);
+        
+        return this.updateById(existingEntity);
     }
 
     @Override
@@ -151,18 +133,8 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
 
     private DatabasePolicyResponse convertToResponse(DatabasePolicy entity) {
         DatabasePolicyResponse response = new DatabasePolicyResponse();
-        response.setId(entity.getId());
-        response.setPolicyCode(entity.getPolicyCode());
-        response.setPolicyName(entity.getPolicyName());
-        response.setDescription(entity.getDescription());
-        response.setSensitivityLevel(entity.getSensitivityLevel());
-        response.setHideExample(entity.getHideExample());
-        response.setClassificationRules(entity.getClassificationRules());
-        response.setRuleExpression(entity.getRuleExpression());
-        response.setAiRule(entity.getAiRule());
-
-        response.setCreateTime(entity.getCreateTime());
-        response.setModifyTime(entity.getModifyTime());
+        // 使用BeanUtils.copyProperties复制所有字段，包括databaseType
+        BeanUtils.copyProperties(entity, response);
         return response;
     }
 
@@ -171,7 +143,7 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         String databaseType = request.getDatabaseType();
         
         // 根据数据库类型获取对应的规则检查器
-        RulesChecker rulesChecker = com.arelore.data.sec.umbrella.server.service.factory.RulesCheckerFactory.getRulesChecker(databaseType);
+        RulesChecker rulesChecker = RulesCheckerFactory.getRulesChecker(databaseType);
         
         if (rulesChecker == null) {
             // 如果没有找到对应的规则检查器，使用默认实现
@@ -265,6 +237,12 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
             case "正则匹配":
                 try {
                     return value.matches(expression);
+                } catch (Exception e) {
+                    return false;
+                }
+            case "非正则匹配":
+                try {
+                    return !value.matches(expression);
                 } catch (Exception e) {
                     return false;
                 }

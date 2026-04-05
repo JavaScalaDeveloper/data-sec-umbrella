@@ -212,7 +212,7 @@ const DatabaseSecurity: React.FC = () => {
             key: 'modifier',
         },
         {
-            title: '策略代码',
+            title: '策略Code',
             dataIndex: 'policyCode',
             key: 'policyCode',
         },
@@ -472,23 +472,42 @@ const DatabaseSecurity: React.FC = () => {
         try {
             const response = await databasePolicyApi.getById(id);
             if (response.code === 200) {
-                setCurrentPolicy(response.data);
-                editForm.setFieldsValue(response.data);
+                const data = response.data;
+                setCurrentPolicy(data);
 
                 // 解析分类规则
-                if (response.data.classificationRules) {
+                let parsedRules: any[] = [];
+                if (data.classificationRules) {
                     try {
-                        setClassificationRules(JSON.parse(response.data.classificationRules));
+                        parsedRules = JSON.parse(data.classificationRules);
                     } catch (e) {
-                        setClassificationRules([]);
+                        parsedRules = [];
                     }
-                } else {
-                    setClassificationRules([]);
                 }
+                setClassificationRules(parsedRules);
+
+                // 设置表单字段
+                editForm.setFieldsValue({
+                    policyCode: data.policyCode,
+                    policyName: data.policyName,
+                    description: data.description,
+                    sensitivityLevel: data.sensitivityLevel,
+                    hideExample: data.hideExample,
+                    databaseType: data.databaseType,
+                });
 
                 // 设置规则表达式和AI规则
-                setRuleExpression(response.data.ruleExpression || '');
-                setAiRule(response.data.aiRule || '');
+                setRuleExpression(data.ruleExpression || '');
+                setAiRule(data.aiRule || '');
+
+                // 回显分类规则到表单
+                const rulesFormValues: Record<string, any> = {};
+                parsedRules.forEach((rule: any) => {
+                    rulesFormValues[`rules[${rule.id}].conditionObject`] = rule.conditionObject;
+                    rulesFormValues[`rules[${rule.id}].conditionType`] = rule.conditionType;
+                    rulesFormValues[`rules[${rule.id}].expression`] = rule.expression;
+                });
+                editForm.setFieldsValue(rulesFormValues);
 
                 setEditModalVisible(true);
             } else {
@@ -546,27 +565,94 @@ const DatabaseSecurity: React.FC = () => {
         }
     };
 
+    // 处理新增策略
+    const handleAdd = () => {
+        // 重置表单和状态
+        editForm.resetFields();
+        setCurrentPolicy(null);
+        setClassificationRules([]);
+        setRuleExpression('');
+        setAiRule('');
+        setValidationResult(null);
+        // 打开编辑模态框
+        setEditModalVisible(true);
+    };
+
     // 处理编辑提交
     const handleEditSubmit = async () => {
         try {
+            // 验证分类规则是否为空
+            if (classificationRules.length === 0) {
+                message.warning('请添加至少一条分类规则');
+                return;
+            }
+
+            // 验证规则表达式是否为空
+            if (!ruleExpression.trim()) {
+                message.warning('请输入规则表达式');
+                return;
+            }
+
+            // 验证每条分类规则的必填字段
+            const invalidRule = classificationRules.find(rule =>
+                !rule.conditionObject || !rule.conditionType || !rule.expression
+            );
+
+            if (invalidRule) {
+                message.warning('请完善所有分类规则的必填字段');
+                return;
+            }
+            
             const values = await editForm.validateFields();
-            const response = await databasePolicyApi.update({
-                id: currentPolicy?.id,
-                policyCode: values.policyCode,
-                policyName: values.policyName,
-                description: values.description,
-                sensitivityLevel: values.sensitivityLevel,
-                hideExample: values.hideExample,
-                classification_rules: JSON.stringify(classificationRules),
-                rule_expression: ruleExpression,
-                ai_rule: aiRule,
-            });
+            
+            // 将分类规则的id改为连续编号（从1开始）
+            const rulesWithCorrectIds = classificationRules.map((rule, index) => ({
+                ...rule,
+                id: index + 1
+            }));
+            
+            let response;
+            if (currentPolicy?.id) {
+                // 更新策略
+                response = await databasePolicyApi.update({
+                    id: currentPolicy.id,
+                    policyCode: values.policyCode,
+                    policyName: values.policyName,
+                    description: values.description,
+                    sensitivityLevel: values.sensitivityLevel,
+                    hideExample: values.hideExample,
+                    classificationRules: JSON.stringify(rulesWithCorrectIds),
+                    ruleExpression: ruleExpression,
+                    aiRule: aiRule,
+                });
+                if (response.code === 200) {
+                    message.success('编辑成功');
+                } else {
+                    message.error(response.message || '编辑失败');
+                }
+            } else {
+                // 创建新策略
+                response = await databasePolicyApi.create({
+                    policyCode: values.policyCode,
+                    policyName: values.policyName,
+                    description: values.description,
+                    sensitivityLevel: values.sensitivityLevel,
+                    hideExample: values.hideExample,
+                    classificationRules: JSON.stringify(rulesWithCorrectIds),
+                    ruleExpression: ruleExpression,
+                    aiRule: aiRule,
+                    databaseType: values.databaseType,
+                });
+                if (response.code === 200) {
+                    message.success('新增成功');
+                } else {
+                    message.error(response.message || '新增失败');
+                }
+            }
+            
             if (response.code === 200) {
-                message.success('编辑成功');
                 setEditModalVisible(false);
                 fetchData();
-            } else {
-                message.error(response.message || '编辑失败');
             }
         } catch (error) {
             message.error('表单验证失败或网络请求失败');
@@ -654,7 +740,7 @@ const DatabaseSecurity: React.FC = () => {
                                     marginBottom: '24px'
                                 }}>
                                     <Title level={3}>策略管理</Title>
-                                    <Button type="primary" icon={<PlusOutlined/>}>新增策略</Button>
+
                                 </div>
                                 <Tabs activeKey={activeTab} onChange={handleTabChange}>
                                     <TabPane tab="MySQL" key="mysql">
@@ -662,8 +748,8 @@ const DatabaseSecurity: React.FC = () => {
                                             <Form form={form} layout="inline">
                                                 <Row gutter={16}>
                                                     <Col span={6}>
-                                                        <Form.Item name="policy_code" label="策略代码">
-                                                            <Input placeholder="请输入策略代码"/>
+                                                        <Form.Item name="policy_code" label="策略Code">
+                                                            <Input placeholder="请输入策略Code"/>
                                                         </Form.Item>
                                                     </Col>
                                                     <Col span={6}>
@@ -702,6 +788,7 @@ const DatabaseSecurity: React.FC = () => {
                                                             <Button type="primary" icon={<SearchOutlined/>}
                                                                     onClick={handleSearch}>查询</Button>
                                                             <Button onClick={handleReset}>重置</Button>
+                                                            <Button type="primary" icon={<PlusOutlined/>} onClick={handleAdd}>新增策略</Button>
                                                         </Space>
                                                     </Col>
                                                 </Row>
@@ -835,7 +922,7 @@ const DatabaseSecurity: React.FC = () => {
                     setValidationResult(null);
                 }}
                 onOk={handleEditSubmit}
-                width={800}
+                width="100%"
                 footer={[
                     <Button key="cancel" onClick={() => {
                         setEditModalVisible(false);
@@ -847,10 +934,10 @@ const DatabaseSecurity: React.FC = () => {
                 <Form form={editForm} layout="vertical">
                     <Form.Item
                         name="policyCode"
-                        label="策略代码"
-                        rules={[{required: true, message: '请输入策略代码'}]}
+                        label="策略Code"
+                        rules={[{required: true, message: '请输入策略Code'}]}
                     >
-                        <Input placeholder="请输入策略代码"/>
+                        <Input placeholder="请输入策略Code" disabled={!!currentPolicy?.id}/>
                     </Form.Item>
                     <Form.Item
                         name="policyName"
@@ -890,7 +977,11 @@ const DatabaseSecurity: React.FC = () => {
                         label="数据库类型"
                         rules={[{required: true, message: '请选择数据库类型'}]}
                     >
-                        <Select placeholder="请选择数据库类型">
+                        <Select 
+                            placeholder="请选择数据库类型"
+                            disabled={activeMenu === '/mysql'}
+                            defaultValue={activeMenu === '/mysql' ? 'MySQL' : undefined}
+                        >
                             <Option value="MySQL">MySQL</Option>
                             <Option value="Clickhouse">Clickhouse</Option>
                             <Option value="PostgreSQL">PostgreSQL</Option>
@@ -915,19 +1006,26 @@ const DatabaseSecurity: React.FC = () => {
                                     dataIndex: 'conditionObject',
                                     key: 'conditionObject',
                                     render: (_: any, record: any) => (
-                                        <Select
-                                            value={record.conditionObject}
-                                            style={{width: 120}}
-                                            onChange={(value) => handleRuleChange(record.id, 'conditionObject', value)}
+                                        <Form.Item
+                                            name={`rules[${record.id}].conditionObject`}
+                                            rules={[{required: true, message: '请选择条件对象'}]}
+                                            style={{margin: 0}}
                                         >
-                                            <Option value="库名">库名</Option>
-                                            <Option value="库描述">库描述</Option>
-                                            <Option value="表名">表名</Option>
-                                            <Option value="表描述">表描述</Option>
-                                            <Option value="列名">列名</Option>
-                                            <Option value="列描述">列描述</Option>
-                                            <Option value="列值">列值</Option>
-                                        </Select>
+                                            <Select
+                                                value={record.conditionObject}
+                                                style={{width: 120}}
+                                                onChange={(value) => handleRuleChange(record.id, 'conditionObject', value)}
+                                                placeholder="请选择条件对象"
+                                            >
+                                                <Option value="库名">库名</Option>
+                                                <Option value="库描述">库描述</Option>
+                                                <Option value="表名">表名</Option>
+                                                <Option value="表描述">表描述</Option>
+                                                <Option value="列名">列名</Option>
+                                                <Option value="列描述">列描述</Option>
+                                                <Option value="列值">列值</Option>
+                                            </Select>
+                                        </Form.Item>
                                     ),
                                 },
                                 {
@@ -935,28 +1033,36 @@ const DatabaseSecurity: React.FC = () => {
                                     dataIndex: 'conditionType',
                                     key: 'conditionType',
                                     render: (_: any, record: any) => (
-                                        <Select
-                                            value={record.conditionType}
-                                            style={{width: 120}}
-                                            onChange={(value) => handleRuleChange(record.id, 'conditionType', value)}
+                                        <Form.Item
+                                            name={`rules[${record.id}].conditionType`}
+                                            rules={[{required: true, message: '请选择条件类型'}]}
+                                            style={{margin: 0}}
                                         >
-                                            <Option value="包含">包含</Option>
-                                            <Option value="不包含">不包含</Option>
-                                            <Option value="等于">等于</Option>
-                                            <Option value="不等于">不等于</Option>
-                                            <Option value="以...开头">以...开头</Option>
-                                            <Option value="不以...开头">不以...开头</Option>
-                                            <Option value="以...结尾">以...结尾</Option>
-                                            <Option value="不以...结尾">不以...结尾</Option>
-                                            <Option value="在...之中">在...之中</Option>
-                                            <Option value="不在...之中">不在...之中</Option>
-                                            <Option value="大于">大于</Option>
-                                            <Option value="小于">小于</Option>
-                                            <Option value="大于等于">大于等于</Option>
-                                            <Option value="小于等于">小于等于</Option>
-                                            <Option value="正则匹配">正则匹配</Option>
-                                            <Option value="内置算法">内置算法</Option>
-                                        </Select>
+                                            <Select
+                                                value={record.conditionType}
+                                                style={{width: 120}}
+                                                onChange={(value) => handleRuleChange(record.id, 'conditionType', value)}
+                                                placeholder="请选择条件类型"
+                                            >
+                                                <Option value="包含">包含</Option>
+                                                <Option value="不包含">不包含</Option>
+                                                <Option value="等于">等于</Option>
+                                                <Option value="不等于">不等于</Option>
+                                                <Option value="以...开头">以...开头</Option>
+                                                <Option value="不以...开头">不以...开头</Option>
+                                                <Option value="以...结尾">以...结尾</Option>
+                                                <Option value="不以...结尾">不以...结尾</Option>
+                                                <Option value="在...之中">在...之中</Option>
+                                                <Option value="不在...之中">不在...之中</Option>
+                                                <Option value="大于">大于</Option>
+                                                <Option value="小于">小于</Option>
+                                                <Option value="大于等于">大于等于</Option>
+                                                <Option value="小于等于">小于等于</Option>
+                                                <Option value="正则匹配">正则匹配</Option>
+                                                <Option value="非正则匹配">非正则匹配</Option>
+                                                <Option value="内置算法">内置算法</Option>
+                                            </Select>
+                                        </Form.Item>
                                     ),
                                 },
                                 {
@@ -964,10 +1070,17 @@ const DatabaseSecurity: React.FC = () => {
                                     dataIndex: 'expression',
                                     key: 'expression',
                                     render: (_: any, record: any) => (
-                                        <Input
-                                            value={record.expression}
-                                            onChange={(e) => handleRuleChange(record.id, 'expression', e.target.value)}
-                                        />
+                                        <Form.Item
+                                            name={`rules[${record.id}].expression`}
+                                            rules={[{required: true, message: '请输入表达式'}]}
+                                            style={{margin: 0}}
+                                        >
+                                            <Input
+                                                value={record.expression}
+                                                onChange={(e) => handleRuleChange(record.id, 'expression', e.target.value)}
+                                                placeholder="请输入表达式"
+                                            />
+                                        </Form.Item>
                                     ),
                                 },
                                 {
@@ -1017,7 +1130,10 @@ const DatabaseSecurity: React.FC = () => {
                             onChange={(e) => setRuleExpression(e.target.value)}
                         />
                     </Form.Item>
-                    <Form.Item label="AI规则">
+                    <Form.Item 
+                        label="AI规则"
+                        rules={[{required: true, message: '请输入AI规则'}]}
+                    >
                         <TextArea placeholder="请输入AI规则" rows={4} value={aiRule}
                                   onChange={(e) => setAiRule(e.target.value)}/>
                     </Form.Item>

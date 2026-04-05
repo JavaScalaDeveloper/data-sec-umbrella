@@ -9,6 +9,7 @@ import com.arelore.data.sec.umbrella.server.service.matcher.NotEndsWithCondition
 import com.arelore.data.sec.umbrella.server.service.matcher.NotEqualsConditionMatcher;
 import com.arelore.data.sec.umbrella.server.service.matcher.NotStartsWithConditionMatcher;
 import com.arelore.data.sec.umbrella.server.service.matcher.RegexConditionMatcher;
+import com.arelore.data.sec.umbrella.server.service.matcher.NotRegexConditionMatcher;
 import com.arelore.data.sec.umbrella.server.service.matcher.StartsWithConditionMatcher;
 
 import java.util.HashMap;
@@ -39,5 +40,6 @@ public abstract class AbstractDatabaseRulesChecker implements RulesChecker {
         conditionMatcherMap.put("以...结尾", new EndsWithConditionMatcher());
         conditionMatcherMap.put("不以...结尾", new NotEndsWithConditionMatcher());
         conditionMatcherMap.put("正则匹配", new RegexConditionMatcher());
+        conditionMatcherMap.put("非正则匹配", new NotRegexConditionMatcher());
     }
 }
