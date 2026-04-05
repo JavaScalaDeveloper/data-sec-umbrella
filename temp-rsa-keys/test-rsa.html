@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RSA加密测试</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.3.2/jsencrypt.min.js"></script>
+</head>
+<body>
+    <h1>RSA加密测试</h1>
+    <div>
+        <h2>公钥配置</h2>
+        <textarea id="publicKey" rows="10" cols="100">MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu5HPzTZn65ivQJCx7g57pIpmo/qjj+qEUVS5hiGsDaImIpYxPz63sdQ21xJSODhJVCTu2xEcWyD5v1aJQwCibK8a0B0yHzVYuYeRQ3vGgSgsdAhLvQawhmOC6jOeAMM4rhXglv3WnD9OCAINcAql10XK46ue0gPBHjnn7MJUe81k8IpwcYgY7XnzWpScmM6H0MDTyn/4w6nLciw6LTCmLMBRUTZliQkrAVkG2I8k/5uVw7YSt0ASyIUN0GCpBFC0OHIgIWQhJ54AExiKW2Lcg5g3qJA7mYPMmERh/2mSSi7aA4ODO8r8mV7ldRVFt5TZq61DalK6IirTwyNCR2ExMwIDAQAB</textarea>
+    </div>
+    
+    <div>
+        <h2>加密测试</h2>
+        <input type="text" id="password" placeholder="输入要加密的密码" />
+        <button onclick="testEncrypt()">加密</button>
+    </div>
+    
+    <div>
+        <h2>加密结果</h2>
+        <textarea id="result" rows="5" cols="100" readonly></textarea>
+    </div>
+
+    <script>
+        function testEncrypt() {
+            const password = document.getElementById('password').value;
+            const publicKey = document.getElementById('publicKey').value;
+            
+            console.log('开始加密，密码长度:', password.length);
+            console.log('公钥长度:', publicKey.length);
+            
+            try {
+                const encrypt = new JSEncrypt();
+                encrypt.setPublicKey(publicKey);
+                
+                const encrypted = encrypt.encrypt(password);
+                
+                console.log('加密结果:', encrypted);
+                
+                if (encrypted === false) {
+                    document.getElementById('result').value = '加密失败：JSEncrypt返回false';
+                    alert('加密失败：JSEncrypt返回false');
+                } else {
+                    document.getElementById('result').value = encrypted;
+                    alert('加密成功！');
+                }
+            } catch (error) {
+                console.error('加密错误:', error);
+                document.getElementById('result').value = '加密错误：' + error.message;
+                alert('加密错误：' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-package com.arelore.data.sec.umbrella.server.controller;
+package com.arelore.data.sec.umbrella.server.controller.policy;
 
 import com.arelore.data.sec.umbrella.server.common.Result;
 import com.arelore.data.sec.umbrella.server.dto.request.MessagePolicyQueryRequest;
@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * <p>

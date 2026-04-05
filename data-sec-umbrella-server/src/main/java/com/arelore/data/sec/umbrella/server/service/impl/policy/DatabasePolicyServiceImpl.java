@@ -1,4 +1,4 @@
-package com.arelore.data.sec.umbrella.server.service.impl;
+package com.arelore.data.sec.umbrella.server.service.impl.policy;
 
 import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.dto.request.DatabasePolicyRequest;
@@ -10,15 +10,11 @@ import com.arelore.data.sec.umbrella.server.entity.DatabasePolicy;
 import com.arelore.data.sec.umbrella.server.mapper.DatabasePolicyMapper;
 import com.arelore.data.sec.umbrella.server.service.DatabasePolicyService;
 import com.arelore.data.sec.umbrella.server.service.checker.RulesChecker;
-import com.arelore.data.sec.umbrella.server.service.factory.RulesCheckerFactory;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import java.time.LocalDateTime;
 import java.util.List;

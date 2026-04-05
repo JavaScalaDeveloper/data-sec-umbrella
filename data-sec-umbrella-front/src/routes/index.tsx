@@ -18,14 +18,116 @@ const router = createBrowserRouter([
       {
         path: 'database-security',
         element: <DatabaseSecurity />,
+        children: [
+          {
+            path: '',
+            element: <DatabaseSecurity />,
+          },
+          {
+            path: 'overview',
+            element: <DatabaseSecurity />,
+          },
+          {
+            path: 'policy-management',
+            element: <DatabaseSecurity />,
+            children: [
+              {
+                path: '',
+                element: <DatabaseSecurity />,
+              },
+              {
+                path: 'mysql',
+                element: <DatabaseSecurity />,
+              },
+              {
+                path: 'clickhouse',
+                element: <DatabaseSecurity />,
+              },
+            ],
+          },
+          {
+            path: 'data-source',
+            element: <DatabaseSecurity />,
+          },
+          {
+            path: 'data-asset',
+            element: <DatabaseSecurity />,
+          },
+          {
+            path: 'task-management',
+            element: <DatabaseSecurity />,
+            children: [
+              {
+                path: '',
+                element: <DatabaseSecurity />,
+              },
+              {
+                path: 'realtime',
+                element: <DatabaseSecurity />,
+              },
+              {
+                path: 'batch',
+                element: <DatabaseSecurity />,
+              },
+            ],
+          },
+          {
+            path: 'configuration',
+            element: <DatabaseSecurity />,
+          },
+        ],
       },
       {
         path: 'api-security',
         element: <ApiSecurity />,
+        children: [
+          {
+            path: '',
+            element: <ApiSecurity />,
+          },
+          {
+            path: 'overview',
+            element: <ApiSecurity />,
+          },
+          {
+            path: 'policy-management',
+            element: <ApiSecurity />,
+          },
+          {
+            path: 'api-monitoring',
+            element: <ApiSecurity />,
+          },
+          {
+            path: 'api-analysis',
+            element: <ApiSecurity />,
+          },
+        ],
       },
       {
         path: 'mq-security',
         element: <MqSecurity />,
+        children: [
+          {
+            path: '',
+            element: <MqSecurity />,
+          },
+          {
+            path: 'overview',
+            element: <MqSecurity />,
+          },
+          {
+            path: 'policy-management',
+            element: <MqSecurity />,
+          },
+          {
+            path: 'mq-monitoring',
+            element: <MqSecurity />,
+          },
+          {
+            path: 'mq-analysis',
+            element: <MqSecurity />,
+          },
+        ],
       },
       {
         path: 'admin-center',

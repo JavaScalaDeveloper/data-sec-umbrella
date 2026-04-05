@@ -19,6 +19,8 @@ import {
     Popconfirm,
     Tag
 } from 'antd';
+
+const { TextArea } = Input;
 import {
     HomeOutlined,
     LockOutlined,
@@ -33,13 +35,13 @@ import {
     PlayCircleOutlined
 } from '@ant-design/icons';
 import type {ColumnsType} from 'antd/es/table';
-import {databasePolicyApi} from '../services/api';
+import {useNavigate, useLocation} from 'react-router-dom';
+import {databasePolicyApi, dataSourceApi} from '../services/api';
 
 const {Content, Sider} = Layout;
 const {Title} = Typography;
 const {TabPane} = Tabs;
 const {Option} = Select;
-const {TextArea} = Input;
 
 interface Policy {
     id: number;
@@ -55,11 +57,44 @@ interface Policy {
 }
 
 const DatabaseSecurity: React.FC = () => {
-    const [activeMenu, setActiveMenu] = useState('2');
-    const [activeTab, setActiveTab] = useState('mysql');
+    const navigate = useNavigate();
+    const location = useLocation();
+    
+    // 根据当前URL设置activeMenu和activeTab
+    const [activeMenu, setActiveMenu] = useState(() => {
+        const path = location.pathname;
+        if (path.includes('/policy-management')) {
+            return '/policy-management';
+        } else if (path.includes('/overview')) {
+            return '/overview';
+        } else if (path.includes('/data-source')) {
+            return '/data-source';
+        } else if (path.includes('/data-asset')) {
+            return '/data-asset';
+        } else if (path.includes('/task-management/realtime')) {
+            return '/task-management/realtime';
+        } else if (path.includes('/task-management/batch')) {
+            return '/task-management/batch';
+        } else if (path.includes('/configuration')) {
+            return '/configuration';
+        }
+        return '/policy-management';
+    });
+    
+    const [activeTab, setActiveTab] = useState(() => {
+        const path = location.pathname;
+        if (path.includes('/mysql')) {
+            return 'mysql';
+        } else if (path.includes('/clickhouse')) {
+            return 'clickhouse';
+        }
+        return 'mysql';
+    });
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
+    const [dataSourceForm] = Form.useForm();
     const [policies, setPolicies] = useState<Policy[]>([]);
+    const [dataSources, setDataSources] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({
         current: 1,
@@ -67,7 +102,10 @@ const DatabaseSecurity: React.FC = () => {
         total: 0,
     });
     const [editModalVisible, setEditModalVisible] = useState(false);
+    const [dataSourceModalVisible, setDataSourceModalVisible] = useState(false);
     const [currentPolicy, setCurrentPolicy] = useState<Policy | null>(null);
+    const [currentDataSource, setCurrentDataSource] = useState<any>(null);
+    const [connectivityStatus, setConnectivityStatus] = useState<{success: boolean; message: string} | null>(null);
     const [classificationRules, setClassificationRules] = useState<any[]>([]);
     const [ruleExpression, setRuleExpression] = useState('');
     const [aiRule, setAiRule] = useState('');
@@ -88,21 +126,42 @@ const DatabaseSecurity: React.FC = () => {
         setLoading(true);
         try {
             console.log('请求参数:', params);
-            const response = await databasePolicyApi.getPage({
-                current: pagination.current,
-                size: pagination.pageSize,
-                ...params,
-            });
-            console.log('响应数据:', response);
-            if (response.code === 200) {
-                console.log('数据记录:', response.data.records);
-                setPolicies(response.data.records);
-                setPagination({
-                    ...pagination,
-                    total: response.data.total,
+            if (activeMenu === '/data-source') {
+                // 获取数据源数据
+                const response = await dataSourceApi.getPage({
+                    current: pagination.current,
+                    size: pagination.pageSize,
+                    ...params,
                 });
+                console.log('响应数据:', response);
+                if (response.code === 200) {
+                    console.log('数据记录:', response.data.records);
+                    setDataSources(response.data.records);
+                    setPagination({
+                        ...pagination,
+                        total: response.data.total,
+                    });
+                } else {
+                    message.error(response.message || '获取数据失败');
+                }
             } else {
-                message.error(response.message || '获取数据失败');
+                // 获取策略数据
+                const response = await databasePolicyApi.getPage({
+                    current: pagination.current,
+                    size: pagination.pageSize,
+                    ...params,
+                });
+                console.log('响应数据:', response);
+                if (response.code === 200) {
+                    console.log('数据记录:', response.data.records);
+                    setPolicies(response.data.records);
+                    setPagination({
+                        ...pagination,
+                        total: response.data.total,
+                    });
+                } else {
+                    message.error(response.message || '获取数据失败');
+                }
             }
         } catch (error) {
             message.error('网络请求失败');
@@ -190,27 +249,89 @@ const DatabaseSecurity: React.FC = () => {
         },
     ];
 
+    // 数据源表格列配置
+    const dataSourceColumns: ColumnsType<any> = [
+        {
+            title: '数据源类型',
+            dataIndex: 'dataSourceType',
+            key: 'dataSourceType',
+        },
+        {
+            title: '实例',
+            dataIndex: 'instance',
+            key: 'instance',
+        },
+        {
+            title: '用户名',
+            dataIndex: 'username',
+            key: 'username',
+        },
+        {
+            title: '连通性',
+            dataIndex: 'connectivity',
+            key: 'connectivity',
+            render: (connectivity) => (
+                <Tag color={connectivity === '可连接' ? 'success' : 'error'}>{connectivity}</Tag>
+            ),
+        },
+        {
+            title: '创建人',
+            dataIndex: 'creator',
+            key: 'creator',
+        },
+        {
+            title: '创建时间',
+            dataIndex: 'createTime',
+            key: 'createTime',
+        },
+        {
+            title: '操作',
+            key: 'action',
+            render: (_, record) => (
+                <Space size="middle">
+                    <Button icon={<EditOutlined/>} onClick={() => handleDataSourceEdit(record.id)}>编辑</Button>
+                    <Button icon={<DeleteOutlined/>} danger onClick={() => handleDataSourceDelete(record.id)}>删除</Button>
+                </Space>
+            ),
+        },
+    ];
+
     // 处理菜单点击
     const handleMenuClick = (key: string) => {
         setActiveMenu(key);
+        // 使用navigate进行导航
+        navigate(`/database-security${key}`);
     };
 
     // 处理Tab切换
     const handleTabChange = (key: string) => {
         setActiveTab(key);
+        // 使用navigate进行导航
+        navigate(`/database-security/policy-management/${key}`);
     };
 
     // 处理查询
     const handleSearch = () => {
         const values = form.getFieldsValue();
-        const params = {
-            policyCode: values.policy_code,
-            policyName: values.policy_name,
-            creator: values.creator,
-            sensitivityLevel: values.sensitivity_level,
-            hideExample: values.hide_example,
-        };
-        fetchData(params);
+        if (activeMenu === '/data-source') {
+            // 搜索数据源
+            const params = {
+                dataSourceType: values.data_source_type,
+                instance: values.instance,
+                username: values.username,
+            };
+            fetchData(params);
+        } else {
+            // 搜索策略
+            const params = {
+                policyCode: values.policy_code,
+                policyName: values.policy_name,
+                creator: values.creator,
+                sensitivityLevel: values.sensitivity_level,
+                hideExample: values.hide_example,
+            };
+            fetchData(params);
+        }
     };
 
     // 处理重置
@@ -240,6 +361,97 @@ const DatabaseSecurity: React.FC = () => {
             }
         } catch (error) {
             message.error('网络请求失败');
+            console.error(error);
+        }
+    };
+
+    // 处理数据源编辑
+    const handleDataSourceEdit = async (id: number) => {
+        try {
+            const response = await dataSourceApi.getById(id);
+            if (response.code === 200) {
+                // 填充表单数据
+                dataSourceForm.setFieldsValue(response.data);
+                setDataSourceModalVisible(true);
+            } else {
+                message.error(response.message || '获取数据源失败');
+            }
+        } catch (error) {
+            message.error('网络请求失败');
+            console.error(error);
+        }
+    };
+
+    // 处理数据源删除
+    const handleDataSourceDelete = async (id: number) => {
+        try {
+            const response = await dataSourceApi.delete(id);
+            if (response.code === 200) {
+                message.success('删除成功');
+                fetchData();
+            } else {
+                message.error(response.message || '删除失败');
+            }
+        } catch (error) {
+            message.error('网络请求失败');
+            console.error(error);
+        }
+    };
+
+    // 处理数据源提交
+    const handleDataSourceSubmit = async () => {
+        try {
+            const values = await dataSourceForm.validateFields();
+            if (values.id) {
+                // 更新数据源
+                const response = await dataSourceApi.update(values);
+                if (response.code === 200) {
+                    message.success('更新成功');
+                    setDataSourceModalVisible(false);
+                    dataSourceForm.resetFields();
+                    fetchData();
+                } else {
+                    message.error(response.message || '更新失败');
+                }
+            } else {
+                // 创建数据源
+                const response = await dataSourceApi.create(values);
+                if (response.code === 200) {
+                    message.success('新增成功');
+                    setDataSourceModalVisible(false);
+                    dataSourceForm.resetFields();
+                    fetchData();
+                } else {
+                    message.error(response.message || '新增失败');
+                }
+            }
+        } catch (error) {
+            message.error('表单验证失败或网络请求失败');
+            console.error(error);
+        }
+    };
+
+    // 处理测试连接
+    const handleTestConnection = async () => {
+        try {
+            const values = await dataSourceForm.validateFields(['dataSourceType', 'instance', 'username', 'password']);
+            // 调用后端测试连接接口
+            const response = await dataSourceApi.testConnection(values);
+            if (response.code === 200) {
+                if (response.data) {
+                    message.success('测试连接成功');
+                    setConnectivityStatus({success: true, message: '连接成功'});
+                } else {
+                    message.error('测试连接失败');
+                    setConnectivityStatus({success: false, message: response.message || '连接失败'});
+                }
+            } else {
+                message.error(response.message || '测试连接失败');
+                setConnectivityStatus({success: false, message: response.message || '连接失败'});
+            }
+        } catch (error) {
+            message.error('网络请求失败');
+            setConnectivityStatus({success: false, message: '网络请求失败'});
             console.error(error);
         }
     };
@@ -362,44 +574,52 @@ const DatabaseSecurity: React.FC = () => {
                         onClick={({key}) => handleMenuClick(key)}
                         items={[
                             {
-                                key: '1',
+                                key: '/overview',
                                 icon: <HomeOutlined/>,
                                 label: '概览',
+                                path: '/overview',
                             },
                             {
-                                key: '2',
+                                key: '/policy-management',
                                 icon: <LockOutlined/>,
                                 label: '策略管理',
+                                path: '/policy-management',
                             },
                             {
-                                key: '3',
+                                key: '/data-source',
                                 icon: <DatabaseOutlined/>,
                                 label: '数据源',
+                                path: '/data-source',
                             },
                             {
-                                key: '4',
+                                key: '/data-asset',
                                 icon: <AppstoreOutlined/>,
                                 label: '数据资产',
+                                path: '/data-asset',
                             },
                             {
-                                key: '5',
+                                key: '/task-management',
                                 icon: <ThunderboltOutlined/>,
                                 label: '任务管理',
+                                path: '/task-management',
                                 children: [
                                     {
-                                        key: '5-1',
+                                        key: '/task-management/realtime',
                                         label: '实时任务',
+                                        path: '/task-management/realtime',
                                     },
                                     {
-                                        key: '5-2',
+                                        key: '/task-management/batch',
                                         label: '批量任务',
+                                        path: '/task-management/batch',
                                     },
                                 ],
                             },
                             {
-                                key: '6',
+                                key: '/configuration',
                                 icon: <SettingOutlined/>,
                                 label: '配置中心',
+                                path: '/configuration',
                             },
                         ]}
                     />
@@ -412,7 +632,7 @@ const DatabaseSecurity: React.FC = () => {
                         margin: 0,
                         width: '100%'
                     }}>
-                        {activeMenu === '2' ? (
+                        {activeMenu === '/policy-management' ? (
                             <>
                                 <div style={{
                                     display: 'flex',
@@ -495,17 +715,91 @@ const DatabaseSecurity: React.FC = () => {
                                     </TabPane>
                                 </Tabs>
                             </>
-                        ) : activeMenu === '1' ? (
+                        ) : activeMenu === '/overview' ? (
                             <Title level={3}>概览</Title>
-                        ) : activeMenu === '3' ? (
-                            <Title level={3}>数据源</Title>
-                        ) : activeMenu === '4' ? (
+                        ) : activeMenu === '/data-source' ? (
+                            <>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '24px'
+                                }}>
+                                    <Title level={3}>数据源管理</Title>
+                                </div>
+                                <Tabs activeKey={activeTab} onChange={handleTabChange}>
+                                    <TabPane tab="MySQL" key="mysql">
+                                        <div
+                                            style={{textAlign: 'center', padding: '20px', marginBottom: '24px'}}>不仅仅是MySQL，Oracle、SQL Server都支持配置及扫描
+                                        </div>
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'flex-end',
+                                            marginBottom: '24px'
+                                        }}>
+                                            <Button type="primary" icon={<PlusOutlined/>} onClick={() => setDataSourceModalVisible(true)}>新增数据源</Button>
+                                        </div>
+                                        <Card style={{marginBottom: '24px'}}>
+                                            <Form form={form} layout="inline">
+                                                <Row gutter={16}>
+                                                    <Col span={6}>
+                                                        <Form.Item name="data_source_type" label="数据源类型">
+                                                            <Select placeholder="请选择数据源类型"
+                                                                    style={{width: '100%'}}>
+                                                                <Option value="MySQL">MySQL</Option>
+                                                                <Option value="Oracle">Oracle</Option>
+                                                                <Option value="SQL Server">SQL Server</Option>
+                                                            </Select>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={6}>
+                                                        <Form.Item name="instance" label="实例">
+                                                            <Input placeholder="请输入实例（域名:端口）"/>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={6}>
+                                                        <Form.Item name="username" label="用户名">
+                                                            <Input placeholder="请输入用户名"/>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={6}>
+                                                        <Space>
+                                                            <Button type="primary" icon={<SearchOutlined/>}
+                                                                    onClick={handleSearch}>查询</Button>
+                                                            <Button onClick={handleReset}>重置</Button>
+                                                        </Space>
+                                                    </Col>
+                                                </Row>
+                                            </Form>
+                                        </Card>
+                                        <Table
+                                            columns={dataSourceColumns}
+                                            dataSource={dataSources}
+                                            rowKey="id"
+                                            loading={loading}
+                                            pagination={{
+                                                current: pagination.current,
+                                                pageSize: pagination.pageSize,
+                                                total: pagination.total,
+                                                onChange: handlePaginationChange,
+                                            }}
+                                            style={{width: '100%'}}
+                                        />
+                                    </TabPane>
+                                    <TabPane tab="Clickhouse" key="clickhouse">
+                                        <div
+                                            style={{textAlign: 'center', padding: '50px'}}>Clickhouse数据源管理功能开发中
+                                        </div>
+                                    </TabPane>
+                                </Tabs>
+                            </>
+                        ) : activeMenu === '/data-asset' ? (
                             <Title level={3}>数据资产</Title>
-                        ) : activeMenu === '5-1' ? (
+                        ) : activeMenu === '/task-management/realtime' ? (
                             <Title level={3}>实时任务</Title>
-                        ) : activeMenu === '5-2' ? (
+                        ) : activeMenu === '/task-management/batch' ? (
                             <Title level={3}>批量任务</Title>
-                        ) : activeMenu === '6' ? (
+                        ) : activeMenu === '/configuration' ? (
                             <Title level={3}>配置中心</Title>
                         ) : null}
                     </Content>
@@ -914,6 +1208,77 @@ const DatabaseSecurity: React.FC = () => {
                             {validationResult.aiDetail && (<p>AI分析详情: {validationResult.aiDetail}</p>)}
                         </Card>
                     )}
+                </Form>
+            </Modal>
+
+            {/* 新增/编辑数据源模态框 */}
+            <Modal
+                title={dataSourceForm.getFieldValue('id') ? "编辑数据源" : "新增数据源"}
+                open={dataSourceModalVisible}
+                onCancel={() => {
+                    setDataSourceModalVisible(false);
+                    dataSourceForm.resetFields();
+                }}
+                onOk={handleDataSourceSubmit}
+                width={600}
+                footer={[
+                    <Button key="cancel" onClick={() => {
+                        setDataSourceModalVisible(false);
+                        dataSourceForm.resetFields();
+                    }}>取消</Button>,
+                    <Button key="submit" type="primary" onClick={handleDataSourceSubmit}>提交</Button>,
+                ]}
+            >
+                <Form form={dataSourceForm} layout="vertical">
+                    <Form.Item name="id" hidden></Form.Item>
+                    <Form.Item
+                        name="dataSourceType"
+                        label="数据源类型"
+                        rules={[{required: true, message: '请选择数据源类型'}]}
+                    >
+                        <Select placeholder="请选择数据源类型">
+                            <Option value="MySQL">MySQL</Option>
+                            <Option value="Oracle">Oracle</Option>
+                            <Option value="SQL Server">SQL Server</Option>
+                        </Select>
+                    </Form.Item>
+                    <Form.Item
+                        name="instance"
+                        label="实例"
+                        rules={[{required: true, message: '请输入实例（域名:端口）'}]}
+                    >
+                        <Input placeholder="请输入实例（域名:端口）"/>
+                    </Form.Item>
+                    <Form.Item
+                        name="username"
+                        label="用户名"
+                        rules={[{required: true, message: '请输入用户名'}]}
+                    >
+                        <Input placeholder="请输入用户名"/>
+                    </Form.Item>
+                    <Form.Item
+                        name="password"
+                        label="密码"
+                        rules={[{required: true, message: '请输入密码'}]}
+                    >
+                        <Input.Password placeholder="请输入密码"/>
+                    </Form.Item>
+                    <Form.Item label="连通性">
+                        <div style={{display: 'flex', alignItems: 'center'}}>
+                            <Button type="primary" onClick={handleTestConnection} style={{marginRight: '16px'}}>测试连接</Button>
+                            {connectivityStatus && (
+                                <span style={{color: connectivityStatus.success ? 'green' : 'red'}}>
+                                    {connectivityStatus.success ? '可连接' : `无法连接: ${connectivityStatus.message}`}
+                                </span>
+                            )}
+                        </div>
+                    </Form.Item>
+                    <Form.Item
+                        name="extendInfo"
+                        label="拓展信息"
+                    >
+                        <TextArea placeholder="请输入拓展信息（JSON字符串）" rows={4}/>
+                    </Form.Item>
                 </Form>
             </Modal>
         </>

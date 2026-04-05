@@ -1,4 +1,4 @@
-package com.arelore.data.sec.umbrella.server.controller;
+package com.arelore.data.sec.umbrella.server.controller.policy;
 
 import com.arelore.data.sec.umbrella.server.common.Result;
 import com.arelore.data.sec.umbrella.server.dto.request.ApiPolicyQueryRequest;
@@ -8,8 +8,6 @@ import com.arelore.data.sec.umbrella.server.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.service.ApiPolicyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * <p>
