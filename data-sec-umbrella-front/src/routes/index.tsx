@@ -5,6 +5,8 @@ import DatabaseSecurity from '../pages/DatabaseSecurity';
 import ApiSecurity from '../pages/ApiSecurity';
 import MqSecurity from '../pages/MqSecurity';
 import AdminCenter from '../pages/AdminCenter';
+import MySQLAsset from '../pages/data-asset/MySQLAsset';
+import ClickhouseAsset from '../pages/data-asset/ClickhouseAsset';
 
 const router = createBrowserRouter([
   {
@@ -48,6 +50,14 @@ const router = createBrowserRouter([
           {
             path: 'data-source',
             element: <DatabaseSecurity />,
+          },
+          {
+            path: 'data-asset/mysql',
+            element: <MySQLAsset />,
+          },
+          {
+            path: 'data-asset/clickhouse',
+            element: <ClickhouseAsset />,
           },
           {
             path: 'data-asset',

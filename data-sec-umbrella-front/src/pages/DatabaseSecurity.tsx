@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import { Outlet } from 'react-router-dom';
 import {
     Layout,
     Menu,
@@ -104,7 +105,7 @@ const DatabaseSecurity: React.FC = () => {
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [dataSourceModalVisible, setDataSourceModalVisible] = useState(false);
     const [currentPolicy, setCurrentPolicy] = useState<Policy | null>(null);
-    const [currentDataSource, setCurrentDataSource] = useState<any>(null);
+    // const [currentDataSource, setCurrentDataSource] = useState<any>(null);
     const [connectivityStatus, setConnectivityStatus] = useState<{ success: boolean; message: string } | null>(null);
     const [classificationRules, setClassificationRules] = useState<any[]>([]);
     const [ruleExpression, setRuleExpression] = useState('');
@@ -587,41 +588,44 @@ const DatabaseSecurity: React.FC = () => {
                                 key: '/overview',
                                 icon: <HomeOutlined/>,
                                 label: '概览',
-                                path: '/overview',
                             },
                             {
                                 key: '/policy-management',
                                 icon: <LockOutlined/>,
                                 label: '策略管理',
-                                path: '/policy-management',
                             },
                             {
                                 key: '/data-source',
                                 icon: <DatabaseOutlined/>,
                                 label: '数据源',
-                                path: '/data-source',
                             },
                             {
                                 key: '/data-asset',
                                 icon: <AppstoreOutlined/>,
                                 label: '数据资产',
-                                path: '/data-asset',
+                                children: [
+                                    {
+                                        key: '/data-asset/mysql',
+                                        label: 'MySQL',
+                                    },
+                                    {
+                                        key: '/data-asset/clickhouse',
+                                        label: 'Clickhouse',
+                                    },
+                                ],
                             },
                             {
                                 key: '/task-management',
                                 icon: <ThunderboltOutlined/>,
                                 label: '任务管理',
-                                path: '/task-management',
                                 children: [
                                     {
                                         key: '/task-management/realtime',
                                         label: '实时任务',
-                                        path: '/task-management/realtime',
                                     },
                                     {
                                         key: '/task-management/batch',
                                         label: '批量任务',
-                                        path: '/task-management/batch',
                                     },
                                 ],
                             },
@@ -629,7 +633,6 @@ const DatabaseSecurity: React.FC = () => {
                                 key: '/configuration',
                                 icon: <SettingOutlined/>,
                                 label: '配置中心',
-                                path: '/configuration',
                             },
                         ]}
                     />
@@ -818,7 +821,9 @@ const DatabaseSecurity: React.FC = () => {
                             <Title level={3}>批量任务</Title>
                         ) : activeMenu === '/configuration' ? (
                             <Title level={3}>配置中心</Title>
-                        ) : null}
+                        ) : (
+                            <Outlet />
+                        )}
                     </Content>
                 </Layout>
             </Layout>

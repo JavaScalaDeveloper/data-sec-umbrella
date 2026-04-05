@@ -30,5 +30,5 @@ public class ApiPolicyQueryRequest extends PageRequest {
     /**
      * 敏感等级
      */
-    private Integer sensitivityLevel;
+    private String sensitivityLevel;
 }

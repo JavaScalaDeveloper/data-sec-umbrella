@@ -30,8 +30,8 @@ async function getRSAPublicKey(): Promise<string> {
         const result = await response.json();
         if (result.code === 200 && result.data) {
             rsaPublicKey = result.data;
-            console.log('成功获取公钥，长度:', rsaPublicKey.length);
-            return rsaPublicKey;
+            console.log('成功获取公钥，长度:', rsaPublicKey?.length);
+            return rsaPublicKey || '';
         } else {
             throw new Error(result.message || '获取公钥失败');
         }
@@ -252,6 +252,181 @@ export const dataSourceApi = {
         }>('/api/data-source/test-connection', {
             method: 'POST',
             body: JSON.stringify(encryptedData),
+        });
+    },
+};
+
+// MySQL数据库信息API
+export const mysqlDatabaseApi = {
+    // 获取分页数据
+    getPage: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                records: any[];
+                total: number;
+                current: number;
+                size: number;
+            };
+        }>('/api/data-asset/mysql/database/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+
+    // 根据ID获取数据库信息
+    getById: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: any;
+        }>('/api/data-asset/mysql/database/get-by-id', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+
+    // 创建数据库信息
+    create: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: number;
+        }>('/api/data-asset/mysql/database/create', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // 更新数据库信息
+    update: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/database/update', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // 删除数据库信息
+    delete: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/database/delete', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+};
+
+// MySQL表信息API
+export const mysqlTableApi = {
+    // 获取分页数据
+    getPage: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                records: any[];
+                total: number;
+                current: number;
+                size: number;
+            };
+        }>('/api/data-asset/mysql/table/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+
+    // 根据ID获取表信息
+    getById: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: any;
+        }>('/api/data-asset/mysql/table/get-by-id', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+
+    // 创建表信息
+    create: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: number;
+        }>('/api/data-asset/mysql/table/create', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // 更新表信息
+    update: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/table/update', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // 删除表信息
+    delete: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/table/delete', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+};
+
+// MySQL资产扫描API
+export const mysqlAssetScanApi = {
+    // 手动触发MySQL资产扫描
+    scan: async () => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/scan', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
+    // 手动触发数据库扫描
+    scanDatabases: async () => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/scan-databases', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
+    // 手动触发表扫描
+    scanTables: async () => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/scan-tables', {
+            method: 'POST',
+            body: JSON.stringify({}),
         });
     },
 };

@@ -19,4 +19,29 @@ public class PageRequest {
      * 每页大小
      */
     private Long size = 10L;
+    
+    /**
+     * 实例（域名:端口）
+     */
+    private String instance;
+    
+    /**
+     * 数据库名
+     */
+    private String databaseName;
+    
+    /**
+     * 表名
+     */
+    private String tableName;
+    
+    /**
+     * 敏感等级
+     */
+    private String sensitivityLevel;
+    
+    /**
+     * 敏感标签
+     */
+    private String sensitivityTags;
 }
