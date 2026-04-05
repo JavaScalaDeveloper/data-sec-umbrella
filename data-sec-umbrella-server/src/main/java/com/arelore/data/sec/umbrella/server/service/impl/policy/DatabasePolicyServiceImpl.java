@@ -119,8 +119,6 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         entity.setRuleExpression(databasePolicyRequest.getRuleExpression());
         entity.setAiRule(databasePolicyRequest.getAiRule());
 
-        entity.setCreateTime(LocalDateTime.now());
-        entity.setModifyTime(LocalDateTime.now());
         
         boolean success = this.save(entity);
         if (success) {
@@ -143,8 +141,6 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         entity.setRuleExpression(databasePolicyRequest.getRuleExpression());
         entity.setAiRule(databasePolicyRequest.getAiRule());
 
-        entity.setModifyTime(LocalDateTime.now());
-        
         return this.updateById(entity);
     }
 

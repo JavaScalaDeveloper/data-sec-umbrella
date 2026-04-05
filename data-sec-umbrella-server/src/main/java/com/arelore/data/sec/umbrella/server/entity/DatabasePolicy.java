@@ -3,6 +3,7 @@ package com.arelore.data.sec.umbrella.server.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Data
 @TableName("database_policy")
@@ -17,13 +18,13 @@ public class DatabasePolicy {
      * 创建时间
      */
     @TableField(value = "create_time", insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
-    private LocalDateTime createTime;
+    private Date createTime;
 
     /**
      * 修改时间
      */
     @TableField(value = "modify_time", insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
-    private LocalDateTime modifyTime;
+    private Date modifyTime;
 
     /**
      * 创建人

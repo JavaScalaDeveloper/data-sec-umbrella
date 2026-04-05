@@ -113,6 +113,89 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## 接口开发规范
+
+### ⚠️ 重要限制
+
+本系统后端接口严格遵循以下规范，所有开发者必须遵守：
+
+1. **禁止使用 RESTful 风格**
+   - 所有接口统一使用 `POST` 方法
+   - 不得使用 `GET`、`PUT`、`DELETE` 等 RESTful HTTP 方法
+
+2. **禁止将参数写在 URL 路径中**
+   - 所有参数必须放在请求体（Request Body）中
+   - 不得使用路径参数（如 `/api/resource/{id}`）
+   - 不得使用查询参数（如 `/api/resource?id=123`）
+
+3. **统一返回格式**
+   - 所有接口返回统一的 `Result` 对象
+   - 包含 `code`（状态码）、`message`（消息）、`data`（数据）字段
+
+### 接口示例
+
+#### 正确的接口设计
+```java
+// ✅ 正确：使用 POST 方法，参数在请求体中
+@PostMapping("/get-by-id")
+public Result<DataSource> getById(@RequestBody Map<String, Object> params) {
+    Long id = Long.parseLong(params.get("id").toString());
+    DataSource dataSource = dataSourceService.getById(id);
+    return Result.success(dataSource);
+}
+```
+
+#### 错误的接口设计
+```java
+// ❌ 错误：使用 GET 方法
+@GetMapping("/{id}")
+public Result<DataSource> getById(@PathVariable Long id) {
+    // ...
+}
+
+// ❌ 错误：使用 PUT 方法
+@PutMapping
+public Result<Boolean> update(@RequestBody DataSource dataSource) {
+    // ...
+}
+
+// ❌ 错误：使用 DELETE 方法
+@DeleteMapping("/{id}")
+public Result<Boolean> delete(@PathVariable Long id) {
+    // ...
+}
+
+// ❌ 错误：使用查询参数
+@GetMapping("/page")
+public Result<IPage<DataSource>> getPage(
+    @RequestParam Integer current,
+    @RequestParam Integer size) {
+    // ...
+}
+```
+
+### 前端调用示例
+
+```typescript
+// ✅ 正确：使用 POST 方法，参数在请求体中
+const response = await request('/api/data-source/get-by-id', {
+    method: 'POST',
+    body: JSON.stringify({ id: 123 }),
+});
+
+// ❌ 错误：使用 GET 方法，参数在 URL 中
+const response = await request('/api/data-source/123', {
+    method: 'GET',
+});
+```
+
+### 规范原因
+
+1. **安全性**：所有接口使用 POST 方法，减少攻击面
+2. **一致性**：统一的接口风格，便于维护和理解
+3. **扩展性**：便于接口版本控制和参数扩展
+4. **监控**：便于日志记录和请求追踪
+
 ## 快速开始
 
 ### 环境要求

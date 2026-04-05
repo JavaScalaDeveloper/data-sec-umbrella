@@ -17,12 +17,18 @@ async function getRSAPublicKey(): Promise<string> {
     }
 
     try {
-        const response = await fetch(`${BASE_URL}/api/data-source/public-key`);
+        const response = await fetch(`${BASE_URL}/api/data-source/get-public-key`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({}),
+        });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const result = await response.json();
-        if (result.code === 200) {
+        if (result.code === 200 && result.data) {
             rsaPublicKey = result.data;
             console.log('成功获取公钥，长度:', rsaPublicKey.length);
             return rsaPublicKey;
@@ -159,12 +165,6 @@ const encryptPassword = async (password: string): Promise<string> => {
 export const dataSourceApi = {
     // 获取分页数据
     getPage: async (params: any) => {
-        const queryParams = new URLSearchParams();
-        Object.entries(params).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) {
-                queryParams.append(key, String(value));
-            }
-        });
         return request<{
             code: number;
             message: string;
@@ -174,8 +174,9 @@ export const dataSourceApi = {
                 current: number;
                 size: number;
             };
-        }>(`/api/data-source/page?${queryParams.toString()}`, {
-            method: 'GET',
+        }>('/api/data-source/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
         });
     },
 
@@ -185,8 +186,9 @@ export const dataSourceApi = {
             code: number;
             message: string;
             data: any;
-        }>(`/api/data-source/${id}`, {
-            method: 'GET',
+        }>('/api/data-source/get-by-id', {
+            method: 'POST',
+            body: JSON.stringify({id}),
         });
     },
 
@@ -201,7 +203,7 @@ export const dataSourceApi = {
             code: number;
             message: string;
             data: number;
-        }>('/api/data-source', {
+        }>('/api/data-source/create', {
             method: 'POST',
             body: JSON.stringify(encryptedData),
         });
@@ -218,8 +220,8 @@ export const dataSourceApi = {
             code: number;
             message: string;
             data: boolean;
-        }>('/api/data-source', {
-            method: 'PUT',
+        }>('/api/data-source/update', {
+            method: 'POST',
             body: JSON.stringify(encryptedData),
         });
     },
@@ -230,8 +232,9 @@ export const dataSourceApi = {
             code: number;
             message: string;
             data: boolean;
-        }>(`/api/data-source/${id}`, {
-            method: 'DELETE',
+        }>('/api/data-source/delete', {
+            method: 'POST',
+            body: JSON.stringify({id}),
         });
     },
 

@@ -20,7 +20,7 @@ import {
     Tag
 } from 'antd';
 
-const { TextArea } = Input;
+const {TextArea} = Input;
 import {
     HomeOutlined,
     LockOutlined,
@@ -59,7 +59,7 @@ interface Policy {
 const DatabaseSecurity: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    
+
     // 根据当前URL设置activeMenu和activeTab
     const [activeMenu, setActiveMenu] = useState(() => {
         const path = location.pathname;
@@ -80,7 +80,7 @@ const DatabaseSecurity: React.FC = () => {
         }
         return '/policy-management';
     });
-    
+
     const [activeTab, setActiveTab] = useState(() => {
         const path = location.pathname;
         if (path.includes('/mysql')) {
@@ -105,7 +105,7 @@ const DatabaseSecurity: React.FC = () => {
     const [dataSourceModalVisible, setDataSourceModalVisible] = useState(false);
     const [currentPolicy, setCurrentPolicy] = useState<Policy | null>(null);
     const [currentDataSource, setCurrentDataSource] = useState<any>(null);
-    const [connectivityStatus, setConnectivityStatus] = useState<{success: boolean; message: string} | null>(null);
+    const [connectivityStatus, setConnectivityStatus] = useState<{ success: boolean; message: string } | null>(null);
     const [classificationRules, setClassificationRules] = useState<any[]>([]);
     const [ruleExpression, setRuleExpression] = useState('');
     const [aiRule, setAiRule] = useState('');
@@ -290,7 +290,8 @@ const DatabaseSecurity: React.FC = () => {
             render: (_, record) => (
                 <Space size="middle">
                     <Button icon={<EditOutlined/>} onClick={() => handleDataSourceEdit(record.id)}>编辑</Button>
-                    <Button icon={<DeleteOutlined/>} danger onClick={() => handleDataSourceDelete(record.id)}>删除</Button>
+                    <Button icon={<DeleteOutlined/>} danger
+                            onClick={() => handleDataSourceDelete(record.id)}>删除</Button>
                 </Space>
             ),
         },
@@ -402,6 +403,7 @@ const DatabaseSecurity: React.FC = () => {
     const handleDataSourceSubmit = async () => {
         try {
             const values = await dataSourceForm.validateFields();
+            console.log('提交的数据:', values);
             if (values.id) {
                 // 更新数据源
                 const response = await dataSourceApi.update(values);
@@ -441,17 +443,25 @@ const DatabaseSecurity: React.FC = () => {
                 if (response.data) {
                     message.success('测试连接成功');
                     setConnectivityStatus({success: true, message: '连接成功'});
+                    dataSourceForm.setFieldsValue({connectivity: '可连接'});
+                    console.log('设置connectivity为: 可连接');
                 } else {
                     message.error('测试连接失败');
                     setConnectivityStatus({success: false, message: response.message || '连接失败'});
+                    dataSourceForm.setFieldsValue({connectivity: '无法连接'});
+                    console.log('设置connectivity为: 无法连接');
                 }
             } else {
                 message.error(response.message || '测试连接失败');
                 setConnectivityStatus({success: false, message: response.message || '连接失败'});
+                dataSourceForm.setFieldsValue({connectivity: '无法连接'});
+                console.log('设置connectivity为: 无法连接');
             }
         } catch (error) {
             message.error('网络请求失败');
             setConnectivityStatus({success: false, message: '网络请求失败'});
+            dataSourceForm.setFieldsValue({connectivity: '无法连接'});
+            console.log('设置connectivity为: 无法连接');
             console.error(error);
         }
     };
@@ -729,17 +739,22 @@ const DatabaseSecurity: React.FC = () => {
                                 </div>
                                 <Tabs activeKey={activeTab} onChange={handleTabChange}>
                                     <TabPane tab="MySQL" key="mysql">
-                                        <div
-                                            style={{textAlign: 'center', padding: '20px', marginBottom: '24px'}}>不仅仅是MySQL，Oracle、SQL Server都支持配置及扫描
-                                        </div>
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'flex-end',
-                                            marginBottom: '24px'
-                                        }}>
-                                            <Button type="primary" icon={<PlusOutlined/>} onClick={() => setDataSourceModalVisible(true)}>新增数据源</Button>
-                                        </div>
+
                                         <Card style={{marginBottom: '24px'}}>
+                                            <div
+                                                style={{
+                                                    textAlign: 'center',
+                                                    padding: '20px',
+                                                    marginBottom: '24px'
+                                                }}>不仅仅是MySQL，Oracle、SQL Server都支持配置及扫描
+                                            </div>
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'flex-end',
+                                                marginBottom: '24px'
+                                            }}>
+
+                                            </div>
                                             <Form form={form} layout="inline">
                                                 <Row gutter={16}>
                                                     <Col span={6}>
@@ -767,6 +782,8 @@ const DatabaseSecurity: React.FC = () => {
                                                             <Button type="primary" icon={<SearchOutlined/>}
                                                                     onClick={handleSearch}>查询</Button>
                                                             <Button onClick={handleReset}>重置</Button>
+                                                            <Button type="primary" icon={<PlusOutlined/>}
+                                                                    onClick={() => setDataSourceModalVisible(true)}>新增数据源</Button>
                                                         </Space>
                                                     </Col>
                                                 </Row>
@@ -1231,12 +1248,16 @@ const DatabaseSecurity: React.FC = () => {
             >
                 <Form form={dataSourceForm} layout="vertical">
                     <Form.Item name="id" hidden></Form.Item>
+                    <Form.Item name="connectivity" hidden></Form.Item>
                     <Form.Item
                         name="dataSourceType"
                         label="数据源类型"
                         rules={[{required: true, message: '请选择数据源类型'}]}
                     >
-                        <Select placeholder="请选择数据源类型">
+                        <Select
+                            placeholder="请选择数据源类型"
+                            disabled={!!dataSourceForm.getFieldValue('id')}
+                        >
                             <Option value="MySQL">MySQL</Option>
                             <Option value="Oracle">Oracle</Option>
                             <Option value="SQL Server">SQL Server</Option>
@@ -1247,7 +1268,10 @@ const DatabaseSecurity: React.FC = () => {
                         label="实例"
                         rules={[{required: true, message: '请输入实例（域名:端口）'}]}
                     >
-                        <Input placeholder="请输入实例（域名:端口）"/>
+                        <Input
+                            placeholder="请输入实例（域名:端口）"
+                            disabled={!!dataSourceForm.getFieldValue('id')}
+                        />
                     </Form.Item>
                     <Form.Item
                         name="username"
@@ -1265,7 +1289,8 @@ const DatabaseSecurity: React.FC = () => {
                     </Form.Item>
                     <Form.Item label="连通性">
                         <div style={{display: 'flex', alignItems: 'center'}}>
-                            <Button type="primary" onClick={handleTestConnection} style={{marginRight: '16px'}}>测试连接</Button>
+                            <Button type="primary" onClick={handleTestConnection}
+                                    style={{marginRight: '16px'}}>测试连接</Button>
                             {connectivityStatus && (
                                 <span style={{color: connectivityStatus.success ? 'green' : 'red'}}>
                                     {connectivityStatus.success ? '可连接' : `无法连接: ${connectivityStatus.message}`}
