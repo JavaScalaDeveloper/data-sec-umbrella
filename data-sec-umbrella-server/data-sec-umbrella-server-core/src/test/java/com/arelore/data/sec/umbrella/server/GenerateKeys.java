@@ -1,4 +1,4 @@
-package com.arelore.data.sec.umbrella.server;
+package com.arelore.data.sec.umbrella.server.core;
 
 import java.security.*;
 import java.util.Base64;

@@ -22,6 +22,14 @@ const STATUS_COLOR: Record<string, string> = {
     failed: 'error',
 };
 
+const formatProgress = (done: number, total: number) => {
+    if (total <= 0) {
+        return `100% (${done}/${total})`;
+    }
+    const percent = Math.min(100, Math.max(0, (done / total) * 100));
+    return `${percent.toFixed(2)}% (${done}/${total})`;
+};
+
 const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
@@ -72,14 +80,59 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         {title: '成功', dataIndex: 'successCount', width: 80},
         {title: '失败', dataIndex: 'failCount', width: 80},
         {title: '敏感', dataIndex: 'sensitiveCount', width: 80},
-        {title: '应扫描', dataIndex: 'expectedTotal', width: 90},
-        {title: '已提交', dataIndex: 'submittedTotal', width: 90},
+        {
+            title: '扫描进度',
+            width: 280,
+            render: (_, record) => {
+                const expected = Number(record.expectedTotal || 0);
+                const submitted = Number(record.submittedTotal || 0);
+                const consumed = Number(record.successCount || 0) + Number(record.failCount || 0);
+                return (
+                    <div>
+                        <div>生产进度：{formatProgress(submitted, expected)}</div>
+                        <div>消费进度：{formatProgress(consumed, expected)}</div>
+                    </div>
+                );
+            },
+        },
         {title: 'AI成功', dataIndex: 'aiSuccessCount', width: 90},
         {title: 'AI失败', dataIndex: 'aiFailCount', width: 90},
         {title: 'AI敏感', dataIndex: 'aiSensitiveCount', width: 90},
         {title: 'AI应扫描', dataIndex: 'aiExpectedTotal', width: 100},
         {title: 'AI已提交', dataIndex: 'aiSubmittedTotal', width: 100},
-        {title: '创建时间', dataIndex: 'createTime', width: 170},
+        {
+            title: '创建/修改时间',
+            width: 220,
+            render: (_, record) => (
+                <div>
+                    <div>创建：{record.createTime || '-'}</div>
+                    <div>修改：{record.modifyTime || '-'}</div>
+                </div>
+            ),
+        },
+        {
+            title: '操作',
+            width: 150,
+            fixed: 'right',
+            render: (_, record) => (
+                <Space size="small">
+                    <Button
+                        size="small"
+                        onClick={() => message.info(`实例详情：${record.id}`)}
+                    >
+                        详情
+                    </Button>
+                    <Button
+                        size="small"
+                        danger
+                        disabled={record.runStatus !== 'running' && record.runStatus !== 'waiting'}
+                        onClick={() => message.info(`停止实例：${record.id}`)}
+                    >
+                        停止
+                    </Button>
+                </Space>
+            ),
+        },
     ];
 
     return (
@@ -113,11 +166,13 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
                 dataSource={list}
                 rowKey="id"
                 loading={loading}
-                scroll={{x: 1300}}
+                scroll={{x: 1700}}
                 pagination={{
                     current: pagination.current,
                     pageSize: pagination.pageSize,
                     total: pagination.total,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
                     onChange: (p, ps) => fetchList(p, ps || 10),
                 }}
             />

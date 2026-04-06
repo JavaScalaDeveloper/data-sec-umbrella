@@ -61,6 +61,9 @@ const ClickhouseAsset: React.FC = () => {
   const [instanceSearch, setInstanceSearch] = useState<string>('');
   const [databaseSearch, setDatabaseSearch] = useState<string>('');
   const [tableSearch, setTableSearch] = useState<string>('');
+  const [instancePagination, setInstancePagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [databasePagination, setDatabasePagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [tablePagination, setTablePagination] = useState({ current: 1, pageSize: 10, total: 0 });
 
   // 实例表格列定义
   const instanceColumns: TableProps<Instance>['columns'] = [
@@ -235,15 +238,22 @@ const ClickhouseAsset: React.FC = () => {
   ];
 
   // 获取实例列表
-  const fetchInstances = async () => {
+  const fetchInstances = async (page = instancePagination.current, pageSize = instancePagination.pageSize) => {
     setLoading(true);
     try {
       const response = await dataSourceApi.getPage({
+        current: page,
+        size: pageSize,
         dataSourceType: 'Clickhouse',
         instance: instanceSearch,
       });
       if (response.code === 200) {
-        setInstanceData(response.data.records);
+        setInstanceData(response.data.records || []);
+        setInstancePagination({
+          current: Number(response.data.current) || page,
+          pageSize: Number(response.data.size) || pageSize,
+          total: Number(response.data.total) || 0,
+        });
       } else {
         message.error('获取实例列表失败');
       }
@@ -256,7 +266,7 @@ const ClickhouseAsset: React.FC = () => {
   };
 
   // 获取数据库列表
-  const fetchDatabases = async () => {
+  const fetchDatabases = async (page = databasePagination.current, pageSize = databasePagination.pageSize) => {
     setLoading(true);
     try {
       // TODO: 调用Clickhouse数据库列表接口
@@ -267,7 +277,7 @@ const ClickhouseAsset: React.FC = () => {
       //   setDatabaseData(response.data.records);
       // }
       // 模拟数据
-      setDatabaseData([
+      const mock = [
         {
           id: 1,
           instance: 'localhost:9000',
@@ -281,7 +291,12 @@ const ClickhouseAsset: React.FC = () => {
           createTime: '2024-01-01 10:00:00',
           modifyTime: '2024-01-01 10:00:00',
         },
-      ]);
+      ].filter((item) => !databaseSearch || item.databaseName.includes(databaseSearch) || item.instance.includes(databaseSearch));
+      const total = mock.length;
+      const start = (page - 1) * pageSize;
+      const records = mock.slice(start, start + pageSize);
+      setDatabaseData(records);
+      setDatabasePagination({ current: page, pageSize, total });
     } catch (error) {
       message.error('网络请求失败');
       console.error(error);
@@ -291,7 +306,7 @@ const ClickhouseAsset: React.FC = () => {
   };
 
   // 获取表列表
-  const fetchTables = async () => {
+  const fetchTables = async (page = tablePagination.current, pageSize = tablePagination.pageSize) => {
     setLoading(true);
     try {
       // TODO: 调用Clickhouse表列表接口
@@ -302,7 +317,7 @@ const ClickhouseAsset: React.FC = () => {
       //   setTableData(response.data.records);
       // }
       // 模拟数据
-      setTableData([
+      const mock = [
         {
           id: 1,
           instance: 'localhost:9000',
@@ -322,7 +337,12 @@ const ClickhouseAsset: React.FC = () => {
           createTime: '2024-01-01 10:00:00',
           modifyTime: '2024-01-01 10:00:00',
         },
-      ]);
+      ].filter((item) => !tableSearch || item.tableName.includes(tableSearch) || item.databaseName.includes(tableSearch));
+      const total = mock.length;
+      const start = (page - 1) * pageSize;
+      const records = mock.slice(start, start + pageSize);
+      setTableData(records);
+      setTablePagination({ current: page, pageSize, total });
     } catch (error) {
       message.error('网络请求失败');
       console.error(error);
@@ -349,40 +369,61 @@ const ClickhouseAsset: React.FC = () => {
                     allowClear
                     value={instanceSearch}
                     onChange={(e) =>setInstanceSearch(e.target.value)}
-                    onSearch={fetchInstances}
+                    onSearch={() => fetchInstances(1, instancePagination.pageSize)}
                     style={{ width: 200 }}
-                  /><Button type="primary" onClick={fetchInstances}>查询</Button></Space><Table
+                  /><Button type="primary" onClick={() => fetchInstances(1, instancePagination.pageSize)}>查询</Button></Space><Table
                   columns={instanceColumns}
                   dataSource={instanceData}
                   loading={loading}
                   rowKey="id"
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: instancePagination.current,
+                    pageSize: instancePagination.pageSize,
+                    total: instancePagination.total,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (p, ps) => fetchInstances(p, ps || 10),
+                  }}
                 /></TabPane><TabPane tab="数据库" key="2"><Space style={{ marginBottom: 16 }}><Search
                     placeholder="搜索数据库"
                     allowClear
                     value={databaseSearch}
                     onChange={(e) =>setDatabaseSearch(e.target.value)}
-                    onSearch={fetchDatabases}
+                    onSearch={() => fetchDatabases(1, databasePagination.pageSize)}
                     style={{ width: 200 }}
-                  /><Button type="primary" onClick={fetchDatabases}>查询</Button></Space><Table
+                  /><Button type="primary" onClick={() => fetchDatabases(1, databasePagination.pageSize)}>查询</Button></Space><Table
                   columns={databaseColumns}
                   dataSource={databaseData}
                   loading={loading}
                   rowKey="id"
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: databasePagination.current,
+                    pageSize: databasePagination.pageSize,
+                    total: databasePagination.total,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (p, ps) => fetchDatabases(p, ps || 10),
+                  }}
                 /></TabPane><TabPane tab="表" key="3"><Space style={{ marginBottom: 16 }}><Search
                     placeholder="搜索表"
                     allowClear
                     value={tableSearch}
                     onChange={(e) =>setTableSearch(e.target.value)}
-                    onSearch={fetchTables}
+                    onSearch={() => fetchTables(1, tablePagination.pageSize)}
                     style={{ width: 200 }}
-                  /><Button type="primary" onClick={fetchTables}>查询</Button></Space><Table
+                  /><Button type="primary" onClick={() => fetchTables(1, tablePagination.pageSize)}>查询</Button></Space><Table
                   columns={tableColumns}
                   dataSource={tableData}
                   loading={loading}
                   rowKey="id"
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: tablePagination.current,
+                    pageSize: tablePagination.pageSize,
+                    total: tablePagination.total,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (p, ps) => fetchTables(p, ps || 10),
+                  }}
                 /></TabPane></Tabs></Card></Content></Layout>);
 };
 

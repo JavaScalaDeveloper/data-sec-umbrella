@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Tabs, Card, Table, Input, Button, Space, message, Modal, Descriptions } from 'antd';
+import { Layout, Tabs, Card, Table, Input, Button, Space, message, Modal, Descriptions, Tag, Form, Select } from 'antd';
 import type { TableProps } from 'antd';
-import { dataSourceApi, mysqlDatabaseApi, mysqlTableApi, mysqlAssetScanApi } from '../../services/api';
+import { dataSourceApi, mysqlDatabaseApi, mysqlTableApi, mysqlAssetScanApi, databasePolicyApi } from '../../services/api';
 
 const { Content } = Layout;
 const { TabPane } = Tabs;
-const { Search } = Input;
+const { Option } = Select;
 
 // 实例数据类型
 interface Instance {
@@ -73,8 +73,54 @@ const MySQLAsset: React.FC = () => {
 
   // 查询参数
   const [instanceSearch, setInstanceSearch] = useState<string>('');
-  const [databaseSearch, setDatabaseSearch] = useState<string>('');
-  const [tableSearch, setTableSearch] = useState<string>('');
+  const [instanceUsernameSearch, setInstanceUsernameSearch] = useState<string>('');
+  const [databaseInstanceSearch, setDatabaseInstanceSearch] = useState<string>('');
+  const [databaseNameSearch, setDatabaseNameSearch] = useState<string>('');
+  const [databaseSensitivityLevelSearch, setDatabaseSensitivityLevelSearch] = useState<string>('');
+  const [databaseSensitivityTagsSearch, setDatabaseSensitivityTagsSearch] = useState<string>('');
+  const [tableInstanceSearch, setTableInstanceSearch] = useState<string>('');
+  const [tableDatabaseSearch, setTableDatabaseSearch] = useState<string>('');
+  const [tableNameSearch, setTableNameSearch] = useState<string>('');
+  const [tableSensitivityLevelSearch, setTableSensitivityLevelSearch] = useState<string>('');
+  const [tableSensitivityTagsSearch, setTableSensitivityTagsSearch] = useState<string>('');
+
+  const [instancePagination, setInstancePagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [databasePagination, setDatabasePagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [tablePagination, setTablePagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [policyCodeNameMap, setPolicyCodeNameMap] = useState<Record<string, string>>({});
+
+  const levelColorMap: Record<number, string> = {
+    1: '#ffccc7',
+    2: '#ffa39e',
+    3: '#ff7875',
+    4: '#ff4d4f',
+    5: '#cf1322',
+  };
+
+  const renderSensitivityLevel = (value?: string | number) => {
+    const level = Number(value);
+    if (!level) {
+      return '-';
+    }
+    return <Tag color={levelColorMap[level] || '#52c41a'}>{level}</Tag>;
+  };
+
+  const renderTags = (value?: string) => {
+    if (!value) {
+      return '-';
+    }
+    const tags = value.split(',').map((item) => item.trim()).filter(Boolean);
+    if (tags.length === 0) {
+      return '-';
+    }
+    return (
+      <Space size={[4, 4]} wrap>
+        {tags.map((item) => (
+          <Tag key={item} color="blue">{policyCodeNameMap[item] || item}</Tag>
+        ))}
+      </Space>
+    );
+  };
 
   // 实例表格列定义
   const instanceColumns: TableProps<Instance>['columns'] = [
@@ -141,21 +187,25 @@ const MySQLAsset: React.FC = () => {
       title: '敏感等级',
       dataIndex: 'sensitivityLevel',
       key: 'sensitivityLevel',
+      render: (value: string) => renderSensitivityLevel(value),
     },
     {
       title: '敏感标签',
       dataIndex: 'sensitivityTags',
       key: 'sensitivityTags',
+      render: (value: string) => renderTags(value),
     },
     {
       title: 'AI敏感等级',
       dataIndex: 'aiSensitivityLevel',
       key: 'aiSensitivityLevel',
+      render: (value: string) => renderSensitivityLevel(value),
     },
     {
       title: 'AI敏感标签',
       dataIndex: 'aiSensitivityTags',
       key: 'aiSensitivityTags',
+      render: (value: string) => renderTags(value),
     },
     {
       title: '人审是否敏感',
@@ -206,21 +256,25 @@ const MySQLAsset: React.FC = () => {
       title: '敏感等级',
       dataIndex: 'sensitivityLevel',
       key: 'sensitivityLevel',
+      render: (value: string) => renderSensitivityLevel(value),
     },
     {
       title: '敏感标签',
       dataIndex: 'sensitivityTags',
       key: 'sensitivityTags',
+      render: (value: string) => renderTags(value),
     },
     {
       title: 'AI敏感等级',
       dataIndex: 'aiSensitivityLevel',
       key: 'aiSensitivityLevel',
+      render: (value: string) => renderSensitivityLevel(value),
     },
     {
       title: 'AI敏感标签',
       dataIndex: 'aiSensitivityTags',
       key: 'aiSensitivityTags',
+      render: (value: string) => renderTags(value),
     },
     {
       title: '人审是否敏感',
@@ -248,15 +302,23 @@ const MySQLAsset: React.FC = () => {
   ];
 
   // 获取实例列表
-  const fetchInstances = async () => {
+  const fetchInstances = async (page = instancePagination.current, pageSize = instancePagination.pageSize) => {
     setLoading(true);
     try {
       const response = await dataSourceApi.getPage({
+        current: page,
+        size: pageSize,
         dataSourceType: 'MySQL',
         instance: instanceSearch,
+        username: instanceUsernameSearch,
       });
       if (response.code === 200) {
-        setInstanceData(response.data.records);
+        setInstanceData(response.data.records || []);
+        setInstancePagination({
+          current: Number(response.data.current) || page,
+          pageSize: Number(response.data.size) || pageSize,
+          total: Number(response.data.total) || 0,
+        });
       } else {
         message.error('获取实例列表失败');
       }
@@ -289,14 +351,24 @@ const MySQLAsset: React.FC = () => {
   };
 
   // 获取数据库列表
-  const fetchDatabases = async () => {
+  const fetchDatabases = async (page = databasePagination.current, pageSize = databasePagination.pageSize) => {
     setLoading(true);
     try {
       const response = await mysqlDatabaseApi.getPage({
-        instance: databaseSearch,
+        current: page,
+        size: pageSize,
+        instance: databaseInstanceSearch,
+        databaseName: databaseNameSearch,
+        sensitivityLevel: databaseSensitivityLevelSearch,
+        sensitivityTags: databaseSensitivityTagsSearch,
       });
       if (response.code === 200) {
-        setDatabaseData(response.data.records);
+        setDatabaseData(response.data.records || []);
+        setDatabasePagination({
+          current: Number(response.data.current) || page,
+          pageSize: Number(response.data.size) || pageSize,
+          total: Number(response.data.total) || 0,
+        });
       } else {
         message.error('获取数据库列表失败');
       }
@@ -309,14 +381,25 @@ const MySQLAsset: React.FC = () => {
   };
 
   // 获取表列表
-  const fetchTables = async () => {
+  const fetchTables = async (page = tablePagination.current, pageSize = tablePagination.pageSize) => {
     setLoading(true);
     try {
       const response = await mysqlTableApi.getPage({
-        databaseName: tableSearch,
+        current: page,
+        size: pageSize,
+        instance: tableInstanceSearch,
+        databaseName: tableDatabaseSearch,
+        tableName: tableNameSearch,
+        sensitivityLevel: tableSensitivityLevelSearch,
+        sensitivityTags: tableSensitivityTagsSearch,
       });
       if (response.code === 200) {
-        setTableData(response.data.records);
+        setTableData(response.data.records || []);
+        setTablePagination({
+          current: Number(response.data.current) || page,
+          pageSize: Number(response.data.size) || pageSize,
+          total: Number(response.data.total) || 0,
+        });
       } else {
         message.error('获取表列表失败');
       }
@@ -342,9 +425,28 @@ const MySQLAsset: React.FC = () => {
     setDetailModalVisible(true);
   };
 
+  // 获取策略 code -> 中文名 映射，用于标签翻译展示
+  const fetchPolicyMap = async () => {
+    try {
+      const response = await databasePolicyApi.getPage({ current: 1, size: 500 });
+      if (response.code === 200 && response.data?.records) {
+        const map: Record<string, string> = {};
+        response.data.records.forEach((item: any) => {
+          if (item?.policyCode) {
+            map[item.policyCode] = item.policyName || item.policyCode;
+          }
+        });
+        setPolicyCodeNameMap(map);
+      }
+    } catch (error) {
+      console.error('获取策略映射失败:', error);
+    }
+  };
+
   // 初始加载实例数据
   useEffect(() => {
     fetchInstances();
+    fetchPolicyMap();
   }, []);
 
   return (<Layout style={{ padding: '24px' }}><Content><Card title="MySQL数据资产"><Tabs defaultActiveKey="1" onChange={(key) =>{
@@ -355,45 +457,120 @@ const MySQLAsset: React.FC = () => {
               } else if (key === '3') {
                 fetchTables();
               }
-            }}><TabPane tab="实例" key="1"><Space style={{ marginBottom: 16 }}><Search
-                    placeholder="搜索实例"
-                    allowClear
-                    value={instanceSearch}
-                    onChange={(e) =>setInstanceSearch(e.target.value)}
-                    onSearch={fetchInstances}
-                    style={{ width: 200 }}
-                  /><Button type="primary" onClick={fetchInstances}>查询</Button><Button type="primary" onClick={handleScan}>扫描</Button></Space><Table
+            }}><TabPane tab="实例" key="1"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
+                          placeholder="请输入实例"
+                          allowClear
+                          value={instanceSearch}
+                          onChange={(e) =>setInstanceSearch(e.target.value)}
+                          onPressEnter={() => fetchInstances(1, instancePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item label="用户名"><Input
+                          placeholder="请输入用户名"
+                          allowClear
+                          value={instanceUsernameSearch}
+                          onChange={(e) =>setInstanceUsernameSearch(e.target.value)}
+                          onPressEnter={() => fetchInstances(1, instancePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item><Space><Button type="primary" onClick={() => fetchInstances(1, instancePagination.pageSize)}>查询</Button><Button type="primary" onClick={handleScan}>扫描</Button></Space></Form.Item></Form><Table
                   columns={instanceColumns}
                   dataSource={instanceData}
                   loading={loading}
                   rowKey="id"
-                  pagination={{ pageSize: 10 }}
-                /></TabPane><TabPane tab="数据库" key="2"><Space style={{ marginBottom: 16 }}><Search
-                    placeholder="搜索数据库"
-                    allowClear
-                    value={databaseSearch}
-                    onChange={(e) =>setDatabaseSearch(e.target.value)}
-                    onSearch={fetchDatabases}
-                    style={{ width: 200 }}
-                  /><Button type="primary" onClick={fetchDatabases}>查询</Button></Space><Table
+                  pagination={{
+                    current: instancePagination.current,
+                    pageSize: instancePagination.pageSize,
+                    total: instancePagination.total,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (p, ps) => fetchInstances(p, ps),
+                  }}
+                /></TabPane><TabPane tab="数据库" key="2"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
+                          placeholder="请输入实例"
+                          allowClear
+                          value={databaseInstanceSearch}
+                          onChange={(e) =>setDatabaseInstanceSearch(e.target.value)}
+                          onPressEnter={() => fetchDatabases(1, databasePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item label="数据库名"><Input
+                          placeholder="请输入数据库名"
+                          allowClear
+                          value={databaseNameSearch}
+                          onChange={(e) =>setDatabaseNameSearch(e.target.value)}
+                          onPressEnter={() => fetchDatabases(1, databasePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item label="敏感等级"><Select
+                          allowClear
+                          placeholder="请选择敏感等级"
+                          value={databaseSensitivityLevelSearch || undefined}
+                          onChange={(v) => setDatabaseSensitivityLevelSearch(v ? String(v) : '')}
+                          style={{ width: 220 }}
+                        ><Option value="1">1</Option><Option value="2">2</Option><Option value="3">3</Option><Option value="4">4</Option><Option value="5">5</Option></Select></Form.Item><Form.Item label="敏感标签"><Input
+                          placeholder="请输入敏感标签"
+                          allowClear
+                          value={databaseSensitivityTagsSearch}
+                          onChange={(e) =>setDatabaseSensitivityTagsSearch(e.target.value)}
+                          onPressEnter={() => fetchDatabases(1, databasePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item><Space><Button type="primary" onClick={() => fetchDatabases(1, databasePagination.pageSize)}>查询</Button></Space></Form.Item></Form><Table
                   columns={databaseColumns}
                   dataSource={databaseData}
                   loading={loading}
                   rowKey="id"
-                  pagination={{ pageSize: 10 }}
-                /></TabPane><TabPane tab="表" key="3"><Space style={{ marginBottom: 16 }}><Search
-                    placeholder="搜索表"
-                    allowClear
-                    value={tableSearch}
-                    onChange={(e) =>setTableSearch(e.target.value)}
-                    onSearch={fetchTables}
-                    style={{ width: 200 }}
-                  /><Button type="primary" onClick={fetchTables}>查询</Button></Space><Table
+                  pagination={{
+                    current: databasePagination.current,
+                    pageSize: databasePagination.pageSize,
+                    total: databasePagination.total,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (p, ps) => fetchDatabases(p, ps),
+                  }}
+                /></TabPane><TabPane tab="表" key="3"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
+                          placeholder="请输入实例"
+                          allowClear
+                          value={tableInstanceSearch}
+                          onChange={(e) =>setTableInstanceSearch(e.target.value)}
+                          onPressEnter={() => fetchTables(1, tablePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item label="数据库"><Input
+                          placeholder="请输入数据库名"
+                          allowClear
+                          value={tableDatabaseSearch}
+                          onChange={(e) =>setTableDatabaseSearch(e.target.value)}
+                          onPressEnter={() => fetchTables(1, tablePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item label="表名"><Input
+                          placeholder="请输入表名"
+                          allowClear
+                          value={tableNameSearch}
+                          onChange={(e) =>setTableNameSearch(e.target.value)}
+                          onPressEnter={() => fetchTables(1, tablePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item label="敏感等级"><Select
+                          allowClear
+                          placeholder="请选择敏感等级"
+                          value={tableSensitivityLevelSearch || undefined}
+                          onChange={(v) => setTableSensitivityLevelSearch(v ? String(v) : '')}
+                          style={{ width: 220 }}
+                        ><Option value="1">1</Option><Option value="2">2</Option><Option value="3">3</Option><Option value="4">4</Option><Option value="5">5</Option></Select></Form.Item><Form.Item label="敏感标签"><Input
+                          placeholder="请输入敏感标签"
+                          allowClear
+                          value={tableSensitivityTagsSearch}
+                          onChange={(e) =>setTableSensitivityTagsSearch(e.target.value)}
+                          onPressEnter={() => fetchTables(1, tablePagination.pageSize)}
+                          style={{ width: 220 }}
+                        /></Form.Item><Form.Item><Space><Button type="primary" onClick={() => fetchTables(1, tablePagination.pageSize)}>查询</Button></Space></Form.Item></Form><Table
                   columns={tableColumns}
                   dataSource={tableData}
                   loading={loading}
                   rowKey="id"
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: tablePagination.current,
+                    pageSize: tablePagination.pageSize,
+                    total: tablePagination.total,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
+                    onChange: (p, ps) => fetchTables(p, ps),
+                  }}
                 /></TabPane></Tabs></Card>
 
         {/* 表详情弹窗 */}

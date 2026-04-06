@@ -5,8 +5,26 @@ server:
 spring:
   application:
     name: data-sec-umbrella-worker
+  data:
+    redis:
+      host: ${REDIS_HOST:book-n95}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redis123}
+      timeout: 3s
+  rabbitmq:
+    host: ${RABBITMQ_HOST:book-n95}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:123456}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: ${OFFLINE_WORKER_CONCURRENCY:4}
+        max-concurrency: ${OFFLINE_WORKER_MAX_CONCURRENCY:8}
+        prefetch: ${OFFLINE_WORKER_PREFETCH:20}
   datasource:
-    url: jdbc:mysql://book-n95:3306/data_sec_umbrella?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://book-n95:3306/data_sec_umbrella?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&connectionTimeZone=Asia/Shanghai&forceConnectionTimeZoneToSession=true
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -16,10 +34,11 @@ spring:
       minimum-idle: 5
       idle-timeout: 300000
       max-lifetime: 1200000
+      connection-init-sql: SET time_zone = '+08:00'
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: com.arelore.data.sec.umbrella.server.entity
+  type-aliases-package: com.arelore.data.sec.umbrella.server.core.entity
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
@@ -29,3 +48,11 @@ mybatis-plus:
       id-type: auto
       logic-delete-value: 1
       logic-not-delete-value: 0
+
+offline-scan:
+  worker:
+    pool:
+      core-size: ${OFFLINE_WORKER_POOL_CORE_SIZE:8}
+      max-size: ${OFFLINE_WORKER_POOL_MAX_SIZE:32}
+      queue-capacity: ${OFFLINE_WORKER_POOL_QUEUE_CAPACITY:500}
+      keep-alive-seconds: ${OFFLINE_WORKER_POOL_KEEP_ALIVE_SECONDS:60}

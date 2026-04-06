@@ -363,6 +363,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
                     pageSize: pagination.pageSize,
                     total: pagination.total,
                     showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
                     onChange: (p, ps) => fetchList(p, ps || 10),
                 }}
             />

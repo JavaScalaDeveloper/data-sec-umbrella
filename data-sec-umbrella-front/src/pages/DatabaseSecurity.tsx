@@ -43,6 +43,8 @@ import {
 } from '../services/api';
 import BatchMysqlOfflineScanJobPanel from './task-management/BatchMysqlOfflineScanJobPanel';
 import BatchMysqlOfflineScanJobInstancePanel from './task-management/BatchMysqlOfflineScanJobInstancePanel';
+import MySQLAsset from './data-asset/MySQLAsset';
+import ClickhouseAsset from './data-asset/ClickhouseAsset';
 
 const {Content, Sider} = Layout;
 const {Title} = Typography;
@@ -336,6 +338,13 @@ const DatabaseSecurity: React.FC = () => {
 
     // 处理菜单点击
     const handleMenuClick = (key: string) => {
+        // 数据资产二级菜单：/data-asset/mysql|clickhouse
+        if (key.startsWith('/data-asset/')) {
+            setActiveMenu('/data-asset');
+            navigate(`/database-security${key}`);
+            return;
+        }
+
         // 批量任务下的三级菜单：/task-management/batch/mysql|clickhouse
         if (key.startsWith('/task-management/batch')) {
             const tabKey = key.endsWith('/clickhouse') ? 'clickhouse' : 'mysql';
@@ -849,6 +858,8 @@ const DatabaseSecurity: React.FC = () => {
                                                 current: pagination.current,
                                                 pageSize: pagination.pageSize,
                                                 total: pagination.total,
+                                                showSizeChanger: true,
+                                                showTotal: (total) => `共 ${total} 条`,
                                                 onChange: handlePaginationChange,
                                             }}
                                             style={{width: '100%'}}
@@ -938,6 +949,8 @@ const DatabaseSecurity: React.FC = () => {
                                                 current: pagination.current,
                                                 pageSize: pagination.pageSize,
                                                 total: pagination.total,
+                                                showSizeChanger: true,
+                                                showTotal: (total) => `共 ${total} 条`,
                                                 onChange: handlePaginationChange,
                                             }}
                                             style={{width: '100%'}}
@@ -951,7 +964,13 @@ const DatabaseSecurity: React.FC = () => {
                                 </Tabs>
                             </>
                         ) : activeMenu === '/data-asset' ? (
-                            <Title level={3}>数据资产</Title>
+                            location.pathname.includes('/data-asset/mysql') ? (
+                                <MySQLAsset/>
+                            ) : location.pathname.includes('/data-asset/clickhouse') ? (
+                                <ClickhouseAsset/>
+                            ) : (
+                                <Title level={3}>数据资产</Title>
+                            )
                         ) : activeMenu === '/task-management/realtime' ? (
                             <Title level={3}>实时任务</Title>
                         ) : activeMenu === '/task-management/batch' ? (
