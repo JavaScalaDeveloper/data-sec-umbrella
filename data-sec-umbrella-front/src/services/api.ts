@@ -332,10 +332,29 @@ export const mysqlOfflineScanJobApi = {
         return request<{
             code: number;
             message: string;
-            data: boolean;
+            data: number;
         }>('/api/db-asset/mysql/offline-scan-job/execute', {
             method: 'POST',
             body: JSON.stringify({id}),
+        });
+    },
+};
+
+/** MySQL 离线扫描任务实例 */
+export const mysqlOfflineScanJobInstanceApi = {
+    getPage: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                records: any[];
+                total: number;
+                current: number;
+                size: number;
+            };
+        }>('/api/db-asset/mysql/offline-scan-job/instance/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
         });
     },
 };

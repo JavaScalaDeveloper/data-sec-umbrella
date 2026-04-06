@@ -1,5 +1,4 @@
 import React, {useState, useEffect} from 'react';
-import { Outlet } from 'react-router-dom';
 import {
     Layout,
     Menu,
@@ -43,6 +42,7 @@ import {
     DATA_SOURCE_PASSWORD_UNCHANGED_SENTINEL,
 } from '../services/api';
 import BatchMysqlOfflineScanJobPanel from './task-management/BatchMysqlOfflineScanJobPanel';
+import BatchMysqlOfflineScanJobInstancePanel from './task-management/BatchMysqlOfflineScanJobInstancePanel';
 
 const {Content, Sider} = Layout;
 const {Title} = Typography;
@@ -336,11 +336,16 @@ const DatabaseSecurity: React.FC = () => {
 
     // 处理菜单点击
     const handleMenuClick = (key: string) => {
-        setActiveMenu(key);
-        if (key === '/task-management/batch') {
-            navigate('/database-security/task-management/batch/mysql');
+        // 批量任务下的三级菜单：/task-management/batch/mysql|clickhouse
+        if (key.startsWith('/task-management/batch')) {
+            const tabKey = key.endsWith('/clickhouse') ? 'clickhouse' : 'mysql';
+            setActiveMenu('/task-management/batch');
+            setBatchTaskTab(tabKey as 'mysql' | 'clickhouse');
+            navigate(`/database-security/task-management/batch/${tabKey}`);
             return;
         }
+
+        setActiveMenu(key);
         navigate(`/database-security${key}`);
     };
 
@@ -350,12 +355,6 @@ const DatabaseSecurity: React.FC = () => {
         if (activeMenu === '/policy-management') {
             navigate(`/database-security/policy-management/${key}`);
         }
-    };
-
-    const handleBatchTaskTabChange = (key: string) => {
-        const k = key as 'mysql' | 'clickhouse';
-        setBatchTaskTab(k);
-        navigate(`/database-security/task-management/batch/${k}`);
     };
 
     // 处理查询
@@ -749,6 +748,16 @@ const DatabaseSecurity: React.FC = () => {
                                     {
                                         key: '/task-management/batch',
                                         label: '批量任务',
+                                        children: [
+                                            {
+                                                key: '/task-management/batch/mysql',
+                                                label: 'MySQL',
+                                            },
+                                            {
+                                                key: '/task-management/batch/clickhouse',
+                                                label: 'Clickhouse',
+                                            },
+                                        ],
                                     },
                                 ],
                             },
@@ -947,22 +956,28 @@ const DatabaseSecurity: React.FC = () => {
                             <Title level={3}>实时任务</Title>
                         ) : activeMenu === '/task-management/batch' ? (
                             <>
-                                <Title level={3}>批量任务</Title>
-                                <Tabs activeKey={batchTaskTab} onChange={handleBatchTaskTabChange}>
-                                    <TabPane tab="MySQL" key="mysql">
-                                        <BatchMysqlOfflineScanJobPanel/>
-                                    </TabPane>
-                                    <TabPane tab="Clickhouse" key="clickhouse">
-                                        <div style={{textAlign: 'center', padding: '48px'}}>
-                                            Clickhouse 批量任务开发中
-                                        </div>
-                                    </TabPane>
-                                </Tabs>
+                                <Title level={3}>
+                                    批量任务 - {batchTaskTab === 'mysql' ? 'MySQL' : 'Clickhouse'}
+                                </Title>
+                                {batchTaskTab === 'mysql' ? (
+                                    <Tabs defaultActiveKey="config">
+                                        <TabPane tab="任务配置" key="config">
+                                            <BatchMysqlOfflineScanJobPanel/>
+                                        </TabPane>
+                                        <TabPane tab="任务实例" key="instances">
+                                            <BatchMysqlOfflineScanJobInstancePanel/>
+                                        </TabPane>
+                                    </Tabs>
+                                ) : (
+                                    <div style={{textAlign: 'center', padding: '48px'}}>
+                                        Clickhouse 批量任务开发中
+                                    </div>
+                                )}
                             </>
                         ) : activeMenu === '/configuration' ? (
                             <Title level={3}>配置中心</Title>
                         ) : (
-                            <Outlet />
+                            null
                         )}
                     </Content>
                 </Layout>

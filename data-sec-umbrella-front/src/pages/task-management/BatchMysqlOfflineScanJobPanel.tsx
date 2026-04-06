@@ -210,7 +210,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
         try {
             const res = await mysqlOfflineScanJobApi.execute(id);
             if (res.code === 200) {
-                message.success('已触发执行');
+                message.success(`已创建执行实例 #${res.data}，任务已加入分发队列`);
             } else {
                 message.error(res.message || '执行失败');
             }
@@ -234,6 +234,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
                 scanPeriod: next.scanPeriod,
                 supportedTags: next.supportedTags,
                 scanScope: next.scanScope,
+                scanInstanceIds: next.scanInstanceIds,
                 timeRangeType: next.timeRangeType,
                 enabledStatus: next.enabledStatus,
             });

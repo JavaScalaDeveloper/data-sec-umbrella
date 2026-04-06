@@ -215,9 +215,12 @@ const response = await request('/api/data-source/123', {
 2. **启动后端服务**
    ```bash
    cd data-sec-umbrella-server
-   # 配置数据库连接信息 (application.yml)
+   # 在 data-sec-umbrella-server-manager 的 application.yml 中配置数据库
    mvn clean install
-   mvn spring-boot:run
+   # 管理 API（对接前端，默认 8080）
+   mvn -pl data-sec-umbrella-server-manager spring-boot:run
+   # 如需定时资产扫描等运行端任务，另起进程（默认 8081）：
+   # mvn -pl data-sec-umbrella-server-worker spring-boot:run
    ```
 
 3. **启动前端服务**
@@ -275,14 +278,11 @@ data-sec-umbrella/
 │   │   ├── utils/                    # 工具函数
 │   │   └── App.tsx                   # 应用入口
 │   └── package.json
-├── data-sec-umbrella-server/         # 后端项目
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/                 # Java源码
-│   │   │   └── resources/            # 配置文件
-│   │   └── test/                     # 测试代码
-│   ├── pom.xml                       # Maven配置
-│   └── application.yml               # 应用配置
+├── data-sec-umbrella-server/         # 后端聚合工程
+│   ├── pom.xml                       # 父 POM（依赖版本管理）
+│   ├── data-sec-umbrella-server-core/    # 实体、Mapper、Service、工具（无 Controller）
+│   ├── data-sec-umbrella-server-manager/ # 管理端 API（Spring Web，默认 8080）
+│   └── data-sec-umbrella-server-worker/  # 运行端（定时/MQ 等，默认 8081）
 └── README.md                         # 项目说明
 ```
 

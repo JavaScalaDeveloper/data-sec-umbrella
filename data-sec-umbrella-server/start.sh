@@ -42,4 +42,4 @@ echo "正在启动后端服务..."
 echo "后端服务将在 http://localhost:8080 上运行"
 echo "API文档地址: http://localhost:8080/api"
 echo "按 Ctrl+C 停止服务器"
-mvn spring-boot:run
+mvn -pl data-sec-umbrella-server-manager spring-boot:run

@@ -1,0 +1,61 @@
+# =================================================================
+# 数据安全保护伞后端配置文件
+# =================================================================
+# ⚠️ 重要：本系统接口开发规范
+# 1. 禁止使用 RESTful 风格，所有接口统一使用 POST 方法
+# 2. 禁止将参数写在 URL 路径中，所有参数必须放在请求体中
+# 3. 所有接口返回统一的 Result 对象
+#
+# 详细规范请参考项目根目录 README.md 中的"接口开发规范"章节
+# =================================================================
+
+server:
+  port: 8080
+
+# 离线扫描：Redis / RabbitMQ（与 docker-compose 中端口一致时可本地直连）
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:book-n95}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redis123}
+      timeout: 3s
+  rabbitmq:
+    host: ${RABBITMQ_HOST:book-n95}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:123456}
+    virtual-host: ${RABBITMQ_VHOST:/}
+  datasource:
+    url: jdbc:mysql://book-n95:3306/data_sec_umbrella?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+  mvc:
+    # 禁用 HTTP 方法隐藏过滤器，强制使用 POST 方法
+    hiddenmethod:
+      filter:
+        enabled: false
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.arelore.data.sec.umbrella.server.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 离线扫描分发调度间隔（毫秒）
+offline-scan:
+  dispatch-interval-ms: 5000
