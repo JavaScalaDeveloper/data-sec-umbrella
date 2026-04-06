@@ -37,7 +37,12 @@ import {
 } from '@ant-design/icons';
 import type {ColumnsType} from 'antd/es/table';
 import {useNavigate, useLocation} from 'react-router-dom';
-import {databasePolicyApi, dataSourceApi} from '../services/api';
+import {
+    databasePolicyApi,
+    dataSourceApi,
+    DATA_SOURCE_PASSWORD_UNCHANGED_SENTINEL,
+} from '../services/api';
+import BatchMysqlOfflineScanJobPanel from './task-management/BatchMysqlOfflineScanJobPanel';
 
 const {Content, Sider} = Layout;
 const {Title} = Typography;
@@ -84,9 +89,27 @@ const DatabaseSecurity: React.FC = () => {
 
     const [activeTab, setActiveTab] = useState(() => {
         const path = location.pathname;
-        if (path.includes('/mysql')) {
+        if (path.includes('/policy-management/')) {
+            if (path.includes('/policy-management/clickhouse')) {
+                return 'clickhouse';
+            }
             return 'mysql';
-        } else if (path.includes('/clickhouse')) {
+        }
+        if (path.includes('/data-source/')) {
+            if (path.includes('/data-source/clickhouse')) {
+                return 'clickhouse';
+            }
+            return 'mysql';
+        }
+        if (path.includes('/clickhouse')) {
+            return 'clickhouse';
+        }
+        return 'mysql';
+    });
+
+    const [batchTaskTab, setBatchTaskTab] = useState<'mysql' | 'clickhouse'>(() => {
+        const path = location.pathname;
+        if (path.includes('/task-management/batch/clickhouse')) {
             return 'clickhouse';
         }
         return 'mysql';
@@ -108,8 +131,6 @@ const DatabaseSecurity: React.FC = () => {
     // const [currentDataSource, setCurrentDataSource] = useState<any>(null);
     const [connectivityStatus, setConnectivityStatus] = useState<{ success: boolean; message: string } | null>(null);
     const [classificationRules, setClassificationRules] = useState<any[]>([]);
-    const [ruleExpression, setRuleExpression] = useState('');
-    const [aiRule, setAiRule] = useState('');
     const [classificationRulesData, setClassificationRulesData] = useState<any[]>([{
         id: Date.now(),
         databaseName: '',
@@ -121,6 +142,12 @@ const DatabaseSecurity: React.FC = () => {
         columnValues: ['']
     }]);
     const [validationResult, setValidationResult] = useState<any>(null);
+
+    useEffect(() => {
+        if (classificationRules.length > 0) {
+            editForm.setFields([{name: 'classificationRulesCount', errors: []}]);
+        }
+    }, [classificationRules.length, editForm]);
 
     // 获取数据
     const fetchData = async (params: any = {}) => {
@@ -183,6 +210,15 @@ const DatabaseSecurity: React.FC = () => {
         console.log('policies状态变化:', policies);
         console.log('policies长度:', policies.length);
     }, [policies]);
+
+    useEffect(() => {
+        const path = location.pathname;
+        if (path.includes('/task-management/batch/clickhouse')) {
+            setBatchTaskTab('clickhouse');
+        } else if (path.includes('/task-management/batch')) {
+            setBatchTaskTab('mysql');
+        }
+    }, [location.pathname]);
 
     // 表格列配置
     const columns: ColumnsType<Policy> = [
@@ -301,15 +337,25 @@ const DatabaseSecurity: React.FC = () => {
     // 处理菜单点击
     const handleMenuClick = (key: string) => {
         setActiveMenu(key);
-        // 使用navigate进行导航
+        if (key === '/task-management/batch') {
+            navigate('/database-security/task-management/batch/mysql');
+            return;
+        }
         navigate(`/database-security${key}`);
     };
 
-    // 处理Tab切换
+    // 处理Tab切换（策略管理走子路由；数据源仅本地切换）
     const handleTabChange = (key: string) => {
         setActiveTab(key);
-        // 使用navigate进行导航
-        navigate(`/database-security/policy-management/${key}`);
+        if (activeMenu === '/policy-management') {
+            navigate(`/database-security/policy-management/${key}`);
+        }
+    };
+
+    const handleBatchTaskTabChange = (key: string) => {
+        const k = key as 'mysql' | 'clickhouse';
+        setBatchTaskTab(k);
+        navigate(`/database-security/task-management/batch/${k}`);
     };
 
     // 处理查询
@@ -372,8 +418,11 @@ const DatabaseSecurity: React.FC = () => {
         try {
             const response = await dataSourceApi.getById(id);
             if (response.code === 200) {
-                // 填充表单数据
-                dataSourceForm.setFieldsValue(response.data);
+                // 编辑时不回传真实密码，用占位 *** 表示沿用库中密码（明文展示三个星号）
+                dataSourceForm.setFieldsValue({
+                    ...response.data,
+                    password: DATA_SOURCE_PASSWORD_UNCHANGED_SENTINEL,
+                });
                 setDataSourceModalVisible(true);
             } else {
                 message.error(response.message || '获取数据源失败');
@@ -437,7 +486,12 @@ const DatabaseSecurity: React.FC = () => {
     // 处理测试连接
     const handleTestConnection = async () => {
         try {
-            const values = await dataSourceForm.validateFields(['dataSourceType', 'instance', 'username', 'password']);
+            const baseFields = ['dataSourceType', 'instance', 'username'] as const;
+            const fields = dataSourceForm.getFieldValue('id')
+                ? [...baseFields]
+                : [...baseFields, 'password'];
+            await dataSourceForm.validateFields(fields);
+            const values = dataSourceForm.getFieldsValue();
             // 调用后端测试连接接口
             const response = await dataSourceApi.testConnection(values);
             if (response.code === 200) {
@@ -494,11 +548,9 @@ const DatabaseSecurity: React.FC = () => {
                     sensitivityLevel: data.sensitivityLevel,
                     hideExample: data.hideExample,
                     databaseType: data.databaseType,
+                    ruleExpression: data.ruleExpression || '',
+                    aiRule: data.aiRule || '',
                 });
-
-                // 设置规则表达式和AI规则
-                setRuleExpression(data.ruleExpression || '');
-                setAiRule(data.aiRule || '');
 
                 // 回显分类规则到表单
                 const rulesFormValues: Record<string, any> = {};
@@ -549,8 +601,8 @@ const DatabaseSecurity: React.FC = () => {
             const formValues = editForm.getFieldsValue();
             const response = await databasePolicyApi.testRules({
                 classificationRules: classificationRules,
-                ruleExpression,
-                aiRule,
+                ruleExpression: formValues.ruleExpression,
+                aiRule: formValues.aiRule,
                 testData: classificationRulesData,
                 databaseType: formValues.databaseType,
             });
@@ -571,8 +623,6 @@ const DatabaseSecurity: React.FC = () => {
         editForm.resetFields();
         setCurrentPolicy(null);
         setClassificationRules([]);
-        setRuleExpression('');
-        setAiRule('');
         setValidationResult(null);
         // 打开编辑模态框
         setEditModalVisible(true);
@@ -581,19 +631,8 @@ const DatabaseSecurity: React.FC = () => {
     // 处理编辑提交
     const handleEditSubmit = async () => {
         try {
-            // 验证分类规则是否为空
-            if (classificationRules.length === 0) {
-                message.warning('请添加至少一条分类规则');
-                return;
-            }
+            const values = await editForm.validateFields();
 
-            // 验证规则表达式是否为空
-            if (!ruleExpression.trim()) {
-                message.warning('请输入规则表达式');
-                return;
-            }
-
-            // 验证每条分类规则的必填字段
             const invalidRule = classificationRules.find(rule =>
                 !rule.conditionObject || !rule.conditionType || !rule.expression
             );
@@ -602,8 +641,6 @@ const DatabaseSecurity: React.FC = () => {
                 message.warning('请完善所有分类规则的必填字段');
                 return;
             }
-            
-            const values = await editForm.validateFields();
             
             // 将分类规则的id改为连续编号（从1开始）
             const rulesWithCorrectIds = classificationRules.map((rule, index) => ({
@@ -622,8 +659,8 @@ const DatabaseSecurity: React.FC = () => {
                     sensitivityLevel: values.sensitivityLevel,
                     hideExample: values.hideExample,
                     classificationRules: JSON.stringify(rulesWithCorrectIds),
-                    ruleExpression: ruleExpression,
-                    aiRule: aiRule,
+                    ruleExpression: values.ruleExpression,
+                    aiRule: values.aiRule,
                 });
                 if (response.code === 200) {
                     message.success('编辑成功');
@@ -639,8 +676,8 @@ const DatabaseSecurity: React.FC = () => {
                     sensitivityLevel: values.sensitivityLevel,
                     hideExample: values.hideExample,
                     classificationRules: JSON.stringify(rulesWithCorrectIds),
-                    ruleExpression: ruleExpression,
-                    aiRule: aiRule,
+                    ruleExpression: values.ruleExpression,
+                    aiRule: values.aiRule,
                     databaseType: values.databaseType,
                 });
                 if (response.code === 200) {
@@ -873,7 +910,11 @@ const DatabaseSecurity: React.FC = () => {
                                                                     onClick={handleSearch}>查询</Button>
                                                             <Button onClick={handleReset}>重置</Button>
                                                             <Button type="primary" icon={<PlusOutlined/>}
-                                                                    onClick={() => setDataSourceModalVisible(true)}>新增数据源</Button>
+                                                                    onClick={() => {
+                                                                        dataSourceForm.resetFields();
+                                                                        setConnectivityStatus(null);
+                                                                        setDataSourceModalVisible(true);
+                                                                    }}>新增数据源</Button>
                                                         </Space>
                                                     </Col>
                                                 </Row>
@@ -905,7 +946,19 @@ const DatabaseSecurity: React.FC = () => {
                         ) : activeMenu === '/task-management/realtime' ? (
                             <Title level={3}>实时任务</Title>
                         ) : activeMenu === '/task-management/batch' ? (
-                            <Title level={3}>批量任务</Title>
+                            <>
+                                <Title level={3}>批量任务</Title>
+                                <Tabs activeKey={batchTaskTab} onChange={handleBatchTaskTabChange}>
+                                    <TabPane tab="MySQL" key="mysql">
+                                        <BatchMysqlOfflineScanJobPanel/>
+                                    </TabPane>
+                                    <TabPane tab="Clickhouse" key="clickhouse">
+                                        <div style={{textAlign: 'center', padding: '48px'}}>
+                                            Clickhouse 批量任务开发中
+                                        </div>
+                                    </TabPane>
+                                </Tabs>
+                            </>
                         ) : activeMenu === '/configuration' ? (
                             <Title level={3}>配置中心</Title>
                         ) : (
@@ -988,7 +1041,7 @@ const DatabaseSecurity: React.FC = () => {
                             <Option value="Oracle">Oracle</Option>
                         </Select>
                     </Form.Item>
-                    <Form.Item label="分类规则">
+                    <Form.Item label="分类规则" required>
                         <div style={{marginBottom: 16}}>
                             <Button type="primary" onClick={addRule} icon={<PlusOutlined/>}>添加规则</Button>
                         </div>
@@ -1118,24 +1171,34 @@ const DatabaseSecurity: React.FC = () => {
                             pagination={false}
                             size="small"
                         />
+                        <Form.Item
+                            name="classificationRulesCount"
+                            noStyle
+                            rules={[
+                                {
+                                    validator: () =>
+                                        classificationRules.length > 0
+                                            ? Promise.resolve()
+                                            : Promise.reject(new Error('请至少添加一条分类规则')),
+                                },
+                            ]}
+                        >
+                            <Input type="hidden"/>
+                        </Form.Item>
                     </Form.Item>
                     <Form.Item
+                        name="ruleExpression"
                         label="规则表达式"
-                        rules={[{required: true, message: '请输入规则表达式'}]}
+                        rules={[{required: true, whitespace: true, message: '请输入规则表达式'}]}
                     >
-                        <TextArea
-                            placeholder="请输入规则表达式"
-                            rows={4}
-                            value={ruleExpression}
-                            onChange={(e) => setRuleExpression(e.target.value)}
-                        />
+                        <TextArea placeholder="请输入规则表达式" rows={4}/>
                     </Form.Item>
-                    <Form.Item 
+                    <Form.Item
+                        name="aiRule"
                         label="AI规则"
-                        rules={[{required: true, message: '请输入AI规则'}]}
+                        rules={[{required: true, whitespace: true, message: '请输入AI规则'}]}
                     >
-                        <TextArea placeholder="请输入AI规则" rows={4} value={aiRule}
-                                  onChange={(e) => setAiRule(e.target.value)}/>
+                        <TextArea placeholder="请输入AI规则" rows={4}/>
                     </Form.Item>
                     <Form.Item label="验证数据">
                         <div style={{marginBottom: '16px'}}>
@@ -1291,15 +1354,13 @@ const DatabaseSecurity: React.FC = () => {
                             type="primary"
                             icon={<PlayCircleOutlined/>}
                             onClick={async () => {
-                                // 验证分类规则是否为空
-                                if (classificationRules.length === 0) {
-                                    message.warning('请添加至少一条分类规则');
-                                    return;
-                                }
-
-                                // 验证规则表达式是否为空
-                                if (!ruleExpression.trim()) {
-                                    message.warning('请输入规则表达式');
+                                try {
+                                    await editForm.validateFields([
+                                        'classificationRulesCount',
+                                        'ruleExpression',
+                                        'aiRule',
+                                    ]);
+                                } catch {
                                     return;
                                 }
 
@@ -1401,12 +1462,54 @@ const DatabaseSecurity: React.FC = () => {
                     >
                         <Input placeholder="请输入用户名"/>
                     </Form.Item>
-                    <Form.Item
-                        name="password"
-                        label="密码"
-                        rules={[{required: true, message: '请输入密码'}]}
-                    >
-                        <Input.Password placeholder="请输入密码"/>
+                    <Form.Item noStyle shouldUpdate>
+                        {() => {
+                            const editingId = dataSourceForm.getFieldValue('id');
+                            const isEditMode = !!editingId;
+                            const pwdVal = dataSourceForm.getFieldValue('password');
+                            const showUnchangedHint =
+                                isEditMode && pwdVal === DATA_SOURCE_PASSWORD_UNCHANGED_SENTINEL;
+                            return (
+                                <Form.Item
+                                    name="password"
+                                    label="密码"
+                                    rules={[
+                                        {
+                                            validator: (_: unknown, value: string) => {
+                                                if (!isEditMode) {
+                                                    if (!value || !String(value).trim()) {
+                                                        return Promise.reject(new Error('请输入密码'));
+                                                    }
+                                                }
+                                                return Promise.resolve();
+                                            },
+                                        },
+                                    ]}
+                                >
+                                    {showUnchangedHint ? (
+                                        <Input
+                                            key="ds-pwd-unchanged"
+                                            readOnly
+                                            onClick={() =>
+                                                dataSourceForm.setFieldsValue({password: ''})
+                                            }
+                                            style={{cursor: 'pointer'}}
+                                            title="点击后输入新密码"
+                                        />
+                                    ) : (
+                                        <Input.Password
+                                            key="ds-pwd-editable"
+                                            placeholder={
+                                                isEditMode
+                                                    ? '输入新密码；留空则沿用原密码'
+                                                    : '请输入密码'
+                                            }
+                                            visibilityToggle={!isEditMode}
+                                        />
+                                    )}
+                                </Form.Item>
+                            );
+                        }}
                     </Form.Item>
                     <Form.Item label="连通性">
                         <div style={{display: 'flex', alignItems: 'center'}}>

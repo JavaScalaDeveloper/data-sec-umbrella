@@ -138,6 +138,17 @@ export const databasePolicyApi = {
     },
 };
 
+/** 编辑数据源时表示「未修改密码」的表单占位，不得当作真实密码加密上传 */
+export const DATA_SOURCE_PASSWORD_UNCHANGED_SENTINEL = '***';
+
+export function isDataSourcePasswordUnchanged(raw: unknown): boolean {
+    if (raw == null) {
+        return true;
+    }
+    const s = String(raw).trim();
+    return s === '' || s === DATA_SOURCE_PASSWORD_UNCHANGED_SENTINEL;
+}
+
 // RSA加密工具函数
 const encryptPassword = async (password: string): Promise<string> => {
     try {
@@ -209,20 +220,22 @@ export const dataSourceApi = {
         });
     },
 
-    // 更新数据源
+    // 更新数据源（编辑时密码留空或占位 *** 则不传，后端沿用库中密文）
     update: async (data: any) => {
-        const encryptedPassword = await encryptPassword(data.password);
-        const encryptedData = {
-            ...data,
-            password: encryptedPassword
-        };
+        const payload = {...data};
+        const raw = payload.password;
+        if (!isDataSourcePasswordUnchanged(raw)) {
+            payload.password = await encryptPassword(String(raw));
+        } else {
+            delete payload.password;
+        }
         return request<{
             code: number;
             message: string;
             data: boolean;
         }>('/api/data-source/update', {
             method: 'POST',
-            body: JSON.stringify(encryptedData),
+            body: JSON.stringify(payload),
         });
     },
 
@@ -238,20 +251,91 @@ export const dataSourceApi = {
         });
     },
 
-    // 测试连接
+    // 测试连接（编辑且未输入新密码时不加密、不传 password，避免请求 get-public-key）
     testConnection: async (data: any) => {
-        const encryptedPassword = await encryptPassword(data.password);
-        const encryptedData = {
-            ...data,
-            password: encryptedPassword
-        };
+        const payload = {...data};
+        const raw = payload.password;
+        if (!isDataSourcePasswordUnchanged(raw)) {
+            payload.password = await encryptPassword(String(raw));
+        } else {
+            delete payload.password;
+        }
         return request<{
             code: number;
             message: string;
             data: boolean;
         }>('/api/data-source/test-connection', {
             method: 'POST',
-            body: JSON.stringify(encryptedData),
+            body: JSON.stringify(payload),
+        });
+    },
+};
+
+/** MySQL 数据资产离线扫描任务（批量任务） */
+export const mysqlOfflineScanJobApi = {
+    getPage: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                records: any[];
+                total: number;
+                current: number;
+                size: number;
+            };
+        }>('/api/db-asset/mysql/offline-scan-job/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    getById: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: any;
+        }>('/api/db-asset/mysql/offline-scan-job/getById', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+    create: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: number;
+        }>('/api/db-asset/mysql/offline-scan-job/create', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    update: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/db-asset/mysql/offline-scan-job/update', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    delete: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/db-asset/mysql/offline-scan-job/delete', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+    execute: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/db-asset/mysql/offline-scan-job/execute', {
+            method: 'POST',
+            body: JSON.stringify({id}),
         });
     },
 };

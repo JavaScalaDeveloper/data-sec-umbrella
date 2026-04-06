@@ -78,6 +78,20 @@ const router = createBrowserRouter([
               {
                 path: 'batch',
                 element: <DatabaseSecurity />,
+                children: [
+                  {
+                    path: '',
+                    element: <DatabaseSecurity />,
+                  },
+                  {
+                    path: 'mysql',
+                    element: <DatabaseSecurity />,
+                  },
+                  {
+                    path: 'clickhouse',
+                    element: <DatabaseSecurity />,
+                  },
+                ],
               },
             ],
           },

@@ -3,7 +3,6 @@ package com.arelore.data.sec.umbrella.server.controller.datasource;
 import com.arelore.data.sec.umbrella.server.common.Result;
 import com.arelore.data.sec.umbrella.server.dto.request.DataSourceRequest;
 import com.arelore.data.sec.umbrella.server.dto.response.DataSourceResponse;
-import com.arelore.data.sec.umbrella.server.entity.DataSource;
 import com.arelore.data.sec.umbrella.server.service.DataSourceService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,9 +42,9 @@ public class DataSourceController {
      * 分页查询数据源
      */
     @PostMapping("/list")
-    public Result<IPage<DataSource>> list(@RequestBody DataSourceRequest request) {
+    public Result<IPage<DataSourceResponse>> list(@RequestBody DataSourceRequest request) {
         long ts1 = System.currentTimeMillis();
-        IPage<DataSource> result = dataSourceService.list(request);
+        IPage<DataSourceResponse> result = dataSourceService.list(request);
         long ts2 = System.currentTimeMillis();
         System.out.println("list cost: " + (ts2 - ts1) + "ms");
         return Result.success(result);
@@ -56,9 +55,10 @@ public class DataSourceController {
      */
     @PostMapping("/get-by-id")
     public Result<DataSourceResponse> getById(@RequestBody DataSourceRequest request) {
-        DataSource dataSource = dataSourceService.getById(request);
-        DataSourceResponse response = new DataSourceResponse();
-        org.springframework.beans.BeanUtils.copyProperties(dataSource, response);
+        DataSourceResponse response = dataSourceService.getById(request);
+        if (response == null) {
+            return Result.error("数据源不存在");
+        }
         return Result.success(response);
     }
 
@@ -66,8 +66,8 @@ public class DataSourceController {
      * 新增数据源
      */
     @PostMapping("/create")
-    public Result<Long> create(@RequestBody DataSource dataSource) {
-        Long id = dataSourceService.create(dataSource);
+    public Result<Long> create(@RequestBody DataSourceRequest request) {
+        Long id = dataSourceService.create(request);
         return Result.success(id);
     }
 
@@ -75,8 +75,8 @@ public class DataSourceController {
      * 更新数据源
      */
     @PostMapping("/update")
-    public Result<Boolean> update(@RequestBody DataSource dataSource) {
-        boolean result = dataSourceService.update(dataSource);
+    public Result<Boolean> update(@RequestBody DataSourceRequest request) {
+        boolean result = dataSourceService.update(request);
         return Result.success(result);
     }
 
@@ -93,8 +93,8 @@ public class DataSourceController {
      * 测试连接
      */
     @PostMapping("/test-connection")
-    public Result<Boolean> testConnection(@RequestBody DataSource dataSource) {
-        DataSourceService.ConnectionTestResult result = dataSourceService.testConnection(dataSource);
+    public Result<Boolean> testConnection(@RequestBody DataSourceRequest request) {
+        DataSourceService.ConnectionTestResult result = dataSourceService.testConnection(request);
         if (result.isSuccess()) {
             return Result.success(true);
         } else {

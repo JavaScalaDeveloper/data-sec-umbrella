@@ -19,22 +19,22 @@ public interface DataSourceService extends IService<DataSource> {
     /**
      * 分页查询数据源
      */
-    IPage<DataSource> list(DataSourceRequest request);
+    IPage<DataSourceResponse> list(DataSourceRequest request);
 
     /**
      * 根据ID查询数据源
      */
-    DataSource getById(DataSourceRequest request);
+    DataSourceResponse getById(DataSourceRequest request);
 
     /**
      * 新增数据源
      */
-    Long create(DataSource dataSource);
+    Long create(DataSourceRequest request);
 
     /**
      * 更新数据源
      */
-    boolean update(DataSource dataSource);
+    boolean update(DataSourceRequest request);
 
     /**
      * 删除数据源
@@ -44,7 +44,7 @@ public interface DataSourceService extends IService<DataSource> {
     /**
      * 测试数据源连接
      */
-    ConnectionTestResult testConnection(DataSource dataSource);
+    ConnectionTestResult testConnection(DataSourceRequest request);
 
     /**
      * 连接测试结果

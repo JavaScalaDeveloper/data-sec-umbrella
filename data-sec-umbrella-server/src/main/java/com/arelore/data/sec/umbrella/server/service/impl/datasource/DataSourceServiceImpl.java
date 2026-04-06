@@ -2,6 +2,7 @@ package com.arelore.data.sec.umbrella.server.service.impl.datasource;
 
 import com.arelore.data.sec.umbrella.server.constant.RSAKeyConstants;
 import com.arelore.data.sec.umbrella.server.dto.request.DataSourceRequest;
+import com.arelore.data.sec.umbrella.server.dto.response.DataSourceResponse;
 import com.arelore.data.sec.umbrella.server.entity.DataSource;
 import com.arelore.data.sec.umbrella.server.mapper.DataSourceMapper;
 import com.arelore.data.sec.umbrella.server.service.DataSourceService;
@@ -12,9 +13,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 数据源Service实现类
@@ -28,7 +31,7 @@ public class DataSourceServiceImpl extends ServiceImpl<DataSourceMapper, DataSou
     }
 
     @Override
-    public IPage<DataSource> list(DataSourceRequest request) {
+    public IPage<DataSourceResponse> list(DataSourceRequest request) {
         Integer current = request.getCurrent() != null ? request.getCurrent() : 1;
         Integer size = request.getSize() != null ? request.getSize() : 10;
 
@@ -44,29 +47,66 @@ public class DataSourceServiceImpl extends ServiceImpl<DataSourceMapper, DataSou
             queryWrapper.eq(DataSource::getUsername, request.getUsername());
         }
         queryWrapper.orderByDesc(DataSource::getCreateTime);
-        return this.page(page, queryWrapper);
+        IPage<DataSource> entityPage = this.page(page, queryWrapper);
+        Page<DataSourceResponse> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
+        List<DataSourceResponse> records = entityPage.getRecords().stream()
+                .map(this::toResponseWithoutPassword)
+                .collect(Collectors.toList());
+        voPage.setRecords(records);
+        return voPage;
     }
 
     @Override
-    public DataSource getById(DataSourceRequest request) {
+    public DataSourceResponse getById(DataSourceRequest request) {
         Long id = request.getId();
         if (id == null) {
             throw new IllegalArgumentException("id不能为空");
         }
-        return this.getById(id);
+        DataSource entity = super.getById(id);
+        if (entity == null) {
+            return null;
+        }
+        DataSourceResponse response = new DataSourceResponse();
+        BeanUtils.copyProperties(entity, response);
+        response.setPassword(null);
+        return response;
     }
 
     @Override
-    public Long create(DataSource dataSource) {
+    public Long create(DataSourceRequest request) {
+        DataSource dataSource = new DataSource();
+        BeanUtils.copyProperties(request, dataSource);
         // 密码在前端已经使用RSA公钥加密，这里直接保存加密后的密码
         this.save(dataSource);
         return dataSource.getId();
     }
 
     @Override
-    public boolean update(DataSource dataSource) {
-        // 密码在前端已经使用RSA公钥加密，这里直接保存加密后的密码
+    public boolean update(DataSourceRequest request) {
+        DataSource dataSource = new DataSource();
+        BeanUtils.copyProperties(request, dataSource);
+        Long id = dataSource.getId();
+        if (id == null) {
+            throw new IllegalArgumentException("id不能为空");
+        }
+        DataSource existing = super.getById(id);
+        if (existing == null) {
+            return false;
+        }
+        String incomingPassword = dataSource.getPassword();
+        if (incomingPassword == null || incomingPassword.isBlank()) {
+            // 未传密码或留空：沿用库中已有密文
+            dataSource.setPassword(existing.getPassword());
+        }
+        // 若传了新密码，则为前端 RSA 加密后的密文，直接落库
         return this.updateById(dataSource);
+    }
+
+    private DataSourceResponse toResponseWithoutPassword(DataSource entity) {
+        DataSourceResponse r = new DataSourceResponse();
+        BeanUtils.copyProperties(entity, r);
+        r.setPassword(null);
+        return r;
     }
 
     @Override
@@ -79,8 +119,21 @@ public class DataSourceServiceImpl extends ServiceImpl<DataSourceMapper, DataSou
     }
 
     @Override
-    public ConnectionTestResult testConnection(DataSource dataSource) {
+    public ConnectionTestResult testConnection(DataSourceRequest request) {
+        DataSource dataSource = new DataSource();
+        BeanUtils.copyProperties(request, dataSource);
         try {
+            String pwd = dataSource.getPassword();
+            if ((pwd == null || pwd.isBlank()) && dataSource.getId() != null) {
+                DataSource existing = super.getById(dataSource.getId());
+                if (existing == null || existing.getPassword() == null || existing.getPassword().isBlank()) {
+                    return new ConnectionTestResult(false, "未填写密码且库中无已存密码");
+                }
+                dataSource.setPassword(existing.getPassword());
+            }
+            if (dataSource.getPassword() == null || dataSource.getPassword().isBlank()) {
+                return new ConnectionTestResult(false, "密码不能为空");
+            }
             // 使用RSA私钥解密密码
             String decryptedPassword = decryptPassword(dataSource.getPassword());
             dataSource.setPassword(decryptedPassword);
