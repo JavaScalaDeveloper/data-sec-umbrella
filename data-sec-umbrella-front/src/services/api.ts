@@ -414,6 +414,21 @@ export const mysqlDatabaseApi = {
         });
     },
 
+    // 仅更新数据库人工打标（IGNORE/FALSE_POSITIVE/SENSITIVE；清空表示恢复默认）
+    updateManualReview: async (params: { id: number; manualReview?: string | null }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/database/update-manual-review', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: params.id,
+                manualReview: params.manualReview === undefined || params.manualReview === null ? '' : params.manualReview,
+            }),
+        });
+    },
+
     // 删除数据库信息
     delete: async (id: number) => {
         return request<{
@@ -482,6 +497,21 @@ export const mysqlTableApi = {
         });
     },
 
+    // 仅更新表人工打标（IGNORE/FALSE_POSITIVE/SENSITIVE；清空表示恢复默认）
+    updateManualReview: async (params: { id: number; manualReview?: string | null }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/mysql/table/update-manual-review', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: params.id,
+                manualReview: params.manualReview === undefined || params.manualReview === null ? '' : params.manualReview,
+            }),
+        });
+    },
+
     // 删除表信息
     delete: async (id: number) => {
         return request<{
@@ -530,6 +560,35 @@ export const mysqlAssetScanApi = {
         }>('/api/data-asset/mysql/scan-tables', {
             method: 'POST',
             body: JSON.stringify({}),
+        });
+    },
+};
+
+// 数据库概览指标API（基于后端快照表）
+export const databaseOverviewApi = {
+    getMetrics: async (params: { databaseType: string; metricPeriod?: string; metricTime?: string }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                databaseType: string;
+                metricPeriod: string;
+                metricTime: string;
+                metrics: Record<string, string>;
+            };
+        }>('/api/overview/database/metrics', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    refreshMetrics: async (params: { databaseType: string; metricTime?: string }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/overview/database/refresh', {
+            method: 'POST',
+            body: JSON.stringify(params),
         });
     },
 };

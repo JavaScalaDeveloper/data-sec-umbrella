@@ -1,6 +1,7 @@
 package com.arelore.data.sec.umbrella.server.manager.controller.dataasset;
 
 import com.arelore.data.sec.umbrella.server.core.common.Result;
+import com.arelore.data.sec.umbrella.server.core.dto.request.ManualReviewUpdateRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.PageRequest;
 import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
@@ -59,6 +60,19 @@ public class MySQLTableInfoController {
     public Result<Boolean> update(@RequestBody MySQLTableInfo tableInfo) {
         boolean result = mySQLTableInfoService.update(tableInfo);
         return Result.success(result);
+    }
+
+    /**
+     * 仅更新表资产人工打标（忽略/误报/敏感）；未传或空字符串表示清除打标。
+     */
+    @PostMapping("/update-manual-review")
+    public Result<Boolean> updateManualReview(@RequestBody ManualReviewUpdateRequest request) {
+        try {
+            boolean ok = mySQLTableInfoService.updateManualReview(request.getId(), request.getManualReview());
+            return Result.success(ok);
+        } catch (IllegalArgumentException ex) {
+            return Result.error(ex.getMessage());
+        }
     }
 
     /**

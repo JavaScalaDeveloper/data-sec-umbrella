@@ -108,6 +108,7 @@ public class MySQLAssetScanJob {
                     if (existingDb != null) {
                         databaseInfo.setId(existingDb.getId());
                         databaseInfo.setCreateTime(existingDb.getCreateTime());
+                        databaseInfo.setManualReview(existingDb.getManualReview());
                         mySQLDatabaseInfoService.updateById(databaseInfo);
                     } else {
                         databaseInfo.setCreateTime(new Date());
@@ -202,6 +203,7 @@ public class MySQLAssetScanJob {
                     if (existingTable != null) {
                         mysqlTableInfo.setId(existingTable.getId());
                         mysqlTableInfo.setCreateTime(existingTable.getCreateTime());
+                        mysqlTableInfo.setManualReview(existingTable.getManualReview());
                         mySQLTableInfoService.updateById(mysqlTableInfo);
                     } else {
                         mysqlTableInfo.setCreateTime(new Date());

@@ -67,7 +67,7 @@ public class MySQLTableAssetQueryStrategy implements AssetQueryStrategy {
         m.put("sensitivityTags", t.getSensitivityTags());
         m.put("aiSensitivityLevel", t.getAiSensitivityLevel());
         m.put("aiSensitivityTags", t.getAiSensitivityTags());
-        m.put("manualSensitive", t.getManualSensitive());
+        m.put("manualReview", t.getManualReview());
         m.put("columnInfo", t.getColumnInfo());
         m.put("columnScanInfo", t.getColumnScanInfo());
         m.put("columnAiScanInfo", t.getColumnAiScanInfo());

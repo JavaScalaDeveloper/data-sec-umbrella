@@ -50,9 +50,35 @@ const router = createBrowserRouter([
           {
             path: 'data-source',
             element: <DatabaseSecurity />,
+            children: [
+              {
+                path: '',
+                element: <DatabaseSecurity />,
+              },
+              {
+                path: 'mysql',
+                element: <DatabaseSecurity />,
+              },
+              {
+                path: 'clickhouse',
+                element: <DatabaseSecurity />,
+              },
+            ],
           },
           {
             path: 'data-asset/mysql',
+            element: <MySQLAsset />,
+          },
+          {
+            path: 'data-asset/mysql/instance',
+            element: <MySQLAsset />,
+          },
+          {
+            path: 'data-asset/mysql/database',
+            element: <MySQLAsset />,
+          },
+          {
+            path: 'data-asset/mysql/table',
             element: <MySQLAsset />,
           },
           {
@@ -86,6 +112,20 @@ const router = createBrowserRouter([
                   {
                     path: 'mysql',
                     element: <DatabaseSecurity />,
+                    children: [
+                      {
+                        path: '',
+                        element: <DatabaseSecurity />,
+                      },
+                      {
+                        path: 'config',
+                        element: <DatabaseSecurity />,
+                      },
+                      {
+                        path: 'instances',
+                        element: <DatabaseSecurity />,
+                      },
+                    ],
                   },
                   {
                     path: 'clickhouse',

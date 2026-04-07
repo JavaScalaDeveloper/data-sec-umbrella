@@ -83,10 +83,10 @@ public class MySQLTableInfo {
     private String aiSensitivityTags;
 
     /**
-     * 人审是否敏感
+     * 人工打标（IGNORE/FALSE_POSITIVE/SENSITIVE），null 表示未人工打标、沿用系统默认。
      */
     @TableField("manual_sensitive")
-    private Boolean manualSensitive;
+    private String manualReview;
 
     /**
      * 列信息（JSON格式）

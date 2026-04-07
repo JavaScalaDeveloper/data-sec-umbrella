@@ -2,9 +2,11 @@ package com.arelore.data.sec.umbrella.server.core.service.impl.dataasset;
 
 import com.arelore.data.sec.umbrella.server.core.dto.request.PageRequest;
 import com.arelore.data.sec.umbrella.server.core.entity.MySQLDatabaseInfo;
+import com.arelore.data.sec.umbrella.server.core.enums.ManualReviewLabelEnum;
 import com.arelore.data.sec.umbrella.server.core.mapper.MySQLDatabaseInfoMapper;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLDatabaseInfoService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -62,5 +64,14 @@ public class MySQLDatabaseInfoServiceImpl extends ServiceImpl<MySQLDatabaseInfoM
     @Override
     public boolean delete(Long id) {
         return this.removeById(id);
+    }
+
+    @Override
+    public boolean updateManualReview(Long id, String manualReview) {
+        String stored = ManualReviewLabelEnum.normalizeToStoredValue(manualReview);
+        LambdaUpdateWrapper<MySQLDatabaseInfo> u = new LambdaUpdateWrapper<>();
+        u.eq(MySQLDatabaseInfo::getId, id);
+        u.set(MySQLDatabaseInfo::getManualReview, stored);
+        return this.update(u);
     }
 }

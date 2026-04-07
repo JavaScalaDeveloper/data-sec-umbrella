@@ -45,6 +45,7 @@ import BatchMysqlOfflineScanJobPanel from './task-management/BatchMysqlOfflineSc
 import BatchMysqlOfflineScanJobInstancePanel from './task-management/BatchMysqlOfflineScanJobInstancePanel';
 import MySQLAsset from './data-asset/MySQLAsset';
 import ClickhouseAsset from './data-asset/ClickhouseAsset';
+import DatabaseOverview from './overview/DatabaseOverview';
 
 const {Content, Sider} = Layout;
 const {Title} = Typography;
@@ -115,6 +116,13 @@ const DatabaseSecurity: React.FC = () => {
             return 'clickhouse';
         }
         return 'mysql';
+    });
+    const [batchMysqlTab, setBatchMysqlTab] = useState<'config' | 'instances'>(() => {
+        const path = location.pathname;
+        if (path.includes('/task-management/batch/mysql/instances')) {
+            return 'instances';
+        }
+        return 'config';
     });
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
@@ -201,11 +209,12 @@ const DatabaseSecurity: React.FC = () => {
         }
     };
 
-    // 初始化数据
+    // 初始化及分页/菜单变更时拉取列表数据（策略管理、数据源）
     useEffect(() => {
-        console.log('组件挂载，开始获取数据');
-        fetchData();
-    }, [pagination.current, pagination.pageSize]);
+        if (activeMenu === '/policy-management' || activeMenu === '/data-source') {
+            fetchData();
+        }
+    }, [pagination.current, pagination.pageSize, activeMenu]);
 
     // 监听policies变化
     useEffect(() => {
@@ -215,10 +224,28 @@ const DatabaseSecurity: React.FC = () => {
 
     useEffect(() => {
         const path = location.pathname;
-        if (path.includes('/task-management/batch/clickhouse')) {
-            setBatchTaskTab('clickhouse');
+        if (path.includes('/policy-management')) {
+            setActiveMenu('/policy-management');
+            setActiveTab(path.includes('/policy-management/clickhouse') ? 'clickhouse' : 'mysql');
+        } else if (path.includes('/overview')) {
+            setActiveMenu('/overview');
+        } else if (path.includes('/data-source')) {
+            setActiveMenu('/data-source');
+            setActiveTab(path.includes('/data-source/clickhouse') ? 'clickhouse' : 'mysql');
+        } else if (path.includes('/data-asset')) {
+            setActiveMenu('/data-asset');
+        } else if (path.includes('/task-management/realtime')) {
+            setActiveMenu('/task-management/realtime');
         } else if (path.includes('/task-management/batch')) {
-            setBatchTaskTab('mysql');
+            setActiveMenu('/task-management/batch');
+            if (path.includes('/task-management/batch/clickhouse')) {
+                setBatchTaskTab('clickhouse');
+            } else {
+                setBatchTaskTab('mysql');
+                setBatchMysqlTab(path.includes('/task-management/batch/mysql/instances') ? 'instances' : 'config');
+            }
+        } else if (path.includes('/configuration')) {
+            setActiveMenu('/configuration');
         }
     }, [location.pathname]);
 
@@ -345,12 +372,25 @@ const DatabaseSecurity: React.FC = () => {
             return;
         }
 
+        // 数据源一级菜单默认进入 mysql tab
+        if (key === '/data-source') {
+            setActiveMenu('/data-source');
+            setActiveTab('mysql');
+            navigate('/database-security/data-source/mysql');
+            return;
+        }
+
         // 批量任务下的三级菜单：/task-management/batch/mysql|clickhouse
         if (key.startsWith('/task-management/batch')) {
             const tabKey = key.endsWith('/clickhouse') ? 'clickhouse' : 'mysql';
             setActiveMenu('/task-management/batch');
             setBatchTaskTab(tabKey as 'mysql' | 'clickhouse');
-            navigate(`/database-security/task-management/batch/${tabKey}`);
+            if (tabKey === 'mysql') {
+                setBatchMysqlTab('config');
+                navigate('/database-security/task-management/batch/mysql/config');
+            } else {
+                navigate('/database-security/task-management/batch/clickhouse');
+            }
             return;
         }
 
@@ -363,7 +403,15 @@ const DatabaseSecurity: React.FC = () => {
         setActiveTab(key);
         if (activeMenu === '/policy-management') {
             navigate(`/database-security/policy-management/${key}`);
+        } else if (activeMenu === '/data-source') {
+            navigate(`/database-security/data-source/${key}`);
         }
+    };
+
+    const handleBatchMysqlTabChange = (key: string) => {
+        const next = key === 'instances' ? 'instances' : 'config';
+        setBatchMysqlTab(next);
+        navigate(`/database-security/task-management/batch/mysql/${next}`);
     };
 
     // 处理查询
@@ -873,7 +921,7 @@ const DatabaseSecurity: React.FC = () => {
                                 </Tabs>
                             </>
                         ) : activeMenu === '/overview' ? (
-                            <Title level={3}>概览</Title>
+                            <DatabaseOverview />
                         ) : activeMenu === '/data-source' ? (
                             <>
                                 <div style={{
@@ -979,7 +1027,7 @@ const DatabaseSecurity: React.FC = () => {
                                     批量任务 - {batchTaskTab === 'mysql' ? 'MySQL' : 'Clickhouse'}
                                 </Title>
                                 {batchTaskTab === 'mysql' ? (
-                                    <Tabs defaultActiveKey="config">
+                                    <Tabs activeKey={batchMysqlTab} onChange={handleBatchMysqlTabChange}>
                                         <TabPane tab="任务配置" key="config">
                                             <BatchMysqlOfflineScanJobPanel/>
                                         </TabPane>

@@ -2,10 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Layout, Tabs, Card, Table, Input, Button, Space, message, Modal, Descriptions, Tag, Form, Select } from 'antd';
 import type { TableProps } from 'antd';
 import { dataSourceApi, mysqlDatabaseApi, mysqlTableApi, mysqlAssetScanApi, databasePolicyApi } from '../../services/api';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const { Content } = Layout;
 const { TabPane } = Tabs;
 const { Option } = Select;
+
+/** 与后端 ManualReviewLabelEnum 的 code 一致 */
+type ManualReviewCode = 'IGNORE' | 'FALSE_POSITIVE' | 'SENSITIVE';
+
+const MANUAL_REVIEW_OPTIONS: { value: ManualReviewCode; label: string }[] = [
+  { value: 'IGNORE', label: '忽略' },
+  { value: 'FALSE_POSITIVE', label: '误报' },
+  { value: 'SENSITIVE', label: '敏感' },
+];
 
 // 实例数据类型
 interface Instance {
@@ -28,7 +38,8 @@ interface Database {
   sensitivityTags: string;
   aiSensitivityLevel: string;
   aiSensitivityTags: string;
-  manualSensitive: boolean;
+  /** 人工打标；空为未打标（默认，不参与人工结论） */
+  manualReview: string | null;
   createTime: string;
   modifyTime: string;
 }
@@ -53,13 +64,16 @@ interface Table {
   sensitivityTags: string;
   aiSensitivityLevel: string;
   aiSensitivityTags: string;
-  manualSensitive: boolean;
+  manualReview: string | null;
   columnInfo: string;
   createTime: string;
   modifyTime: string;
 }
 
 const MySQLAsset: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // 状态管理
   const [instanceData, setInstanceData] = useState<Instance[]>([]);
   const [databaseData, setDatabaseData] = useState<Database[]>([]);
@@ -88,6 +102,16 @@ const MySQLAsset: React.FC = () => {
   const [databasePagination, setDatabasePagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [tablePagination, setTablePagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [policyCodeNameMap, setPolicyCodeNameMap] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<'instance' | 'database' | 'table'>(() => {
+    const path = location.pathname;
+    if (path.endsWith('/database-security/data-asset/mysql/database')) {
+      return 'database';
+    }
+    if (path.endsWith('/database-security/data-asset/mysql/table')) {
+      return 'table';
+    }
+    return 'instance';
+  });
 
   const levelColorMap: Record<number, string> = {
     1: '#ffccc7',
@@ -208,10 +232,43 @@ const MySQLAsset: React.FC = () => {
       render: (value: string) => renderTags(value),
     },
     {
-      title: '人审是否敏感',
-      dataIndex: 'manualSensitive',
-      key: 'manualSensitive',
-      render: (_text) => (_text ? '是' : '否'),
+      title: '人工打标',
+      dataIndex: 'manualReview',
+      key: 'manualReview',
+      width: 150,
+      render: (_text, record) => (
+        <Select
+          style={{ minWidth: 120 }}
+          allowClear
+          placeholder="默认"
+          value={record.manualReview || undefined}
+          onChange={async (v) => {
+            try {
+              const res = await mysqlDatabaseApi.updateManualReview({
+                id: record.id,
+                manualReview: v,
+              });
+              if (res.code === 200) {
+                message.success('已更新人工打标');
+                setDatabaseData((rows) =>
+                  rows.map((r) => (r.id === record.id ? { ...r, manualReview: v ?? null } : r)),
+                );
+              } else {
+                message.error(res.message || '更新失败');
+              }
+            } catch (e) {
+              message.error('网络错误');
+              console.error(e);
+            }
+          }}
+        >
+          {MANUAL_REVIEW_OPTIONS.map((o) => (
+            <Option key={o.value} value={o.value}>
+              {o.label}
+            </Option>
+          ))}
+        </Select>
+      ),
     },
     {
       title: '创建时间',
@@ -277,10 +334,43 @@ const MySQLAsset: React.FC = () => {
       render: (value: string) => renderTags(value),
     },
     {
-      title: '人审是否敏感',
-      dataIndex: 'manualSensitive',
-      key: 'manualSensitive',
-      render: (_text) => (_text ? '是' : '否'),
+      title: '人工打标',
+      dataIndex: 'manualReview',
+      key: 'manualReview',
+      width: 150,
+      render: (_text, record) => (
+        <Select
+          style={{ minWidth: 120 }}
+          allowClear
+          placeholder="默认"
+          value={record.manualReview || undefined}
+          onChange={async (v) => {
+            try {
+              const res = await mysqlTableApi.updateManualReview({
+                id: record.id,
+                manualReview: v,
+              });
+              if (res.code === 200) {
+                message.success('已更新人工打标');
+                setTableData((rows) =>
+                  rows.map((r) => (r.id === record.id ? { ...r, manualReview: v ?? null } : r)),
+                );
+              } else {
+                message.error(res.message || '更新失败');
+              }
+            } catch (e) {
+              message.error('网络错误');
+              console.error(e);
+            }
+          }}
+        >
+          {MANUAL_REVIEW_OPTIONS.map((o) => (
+            <Option key={o.value} value={o.value}>
+              {o.label}
+            </Option>
+          ))}
+        </Select>
+      ),
     },
     {
       title: '创建时间',
@@ -445,19 +535,38 @@ const MySQLAsset: React.FC = () => {
 
   // 初始加载实例数据
   useEffect(() => {
-    fetchInstances();
     fetchPolicyMap();
   }, []);
 
-  return (<Layout style={{ padding: '24px' }}><Content><Card title="MySQL数据资产"><Tabs defaultActiveKey="1" onChange={(key) =>{
-              if (key === '1') {
-                fetchInstances();
-              } else if (key === '2') {
-                fetchDatabases();
-              } else if (key === '3') {
-                fetchTables();
-              }
-            }}><TabPane tab="实例" key="1"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
+  useEffect(() => {
+    const path = location.pathname;
+    // 兼容旧入口：/database-security/data-asset/mysql 默认跳到 instance
+    if (path.endsWith('/database-security/data-asset/mysql')) {
+      navigate('/database-security/data-asset/mysql/instance', { replace: true });
+      return;
+    }
+    if (path.endsWith('/database-security/data-asset/mysql/database')) {
+      setActiveTab('database');
+      fetchDatabases(1, databasePagination.pageSize);
+      return;
+    }
+    if (path.endsWith('/database-security/data-asset/mysql/table')) {
+      setActiveTab('table');
+      fetchTables(1, tablePagination.pageSize);
+      return;
+    }
+    // instance
+    setActiveTab('instance');
+    fetchInstances(1, instancePagination.pageSize);
+  }, [location.pathname]);
+
+  const handleTabChange = (key: string) => {
+    const next = key === 'database' ? 'database' : key === 'table' ? 'table' : 'instance';
+    setActiveTab(next);
+    navigate(`/database-security/data-asset/mysql/${next}`);
+  };
+
+  return (<Layout style={{ padding: '24px' }}><Content><Card title="MySQL数据资产"><Tabs activeKey={activeTab} onChange={handleTabChange}><TabPane tab="实例" key="instance"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
                           placeholder="请输入实例"
                           allowClear
                           value={instanceSearch}
@@ -484,7 +593,7 @@ const MySQLAsset: React.FC = () => {
                     showTotal: (total) => `共 ${total} 条`,
                     onChange: (p, ps) => fetchInstances(p, ps),
                   }}
-                /></TabPane><TabPane tab="数据库" key="2"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
+                /></TabPane><TabPane tab="数据库" key="database"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
                           placeholder="请输入实例"
                           allowClear
                           value={databaseInstanceSearch}
@@ -524,7 +633,7 @@ const MySQLAsset: React.FC = () => {
                     showTotal: (total) => `共 ${total} 条`,
                     onChange: (p, ps) => fetchDatabases(p, ps),
                   }}
-                /></TabPane><TabPane tab="表" key="3"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
+                /></TabPane><TabPane tab="表" key="table"><Form layout="inline" style={{ marginBottom: 16 }}><Form.Item label="实例"><Input
                           placeholder="请输入实例"
                           allowClear
                           value={tableInstanceSearch}
@@ -581,7 +690,39 @@ const MySQLAsset: React.FC = () => {
           footer={null}
           width="90%"
         >
-          {currentTable && (<><Descriptions bordered column={2}><Descriptions.Item label="实例">{currentTable.instance}</Descriptions.Item><Descriptions.Item label="数据库名">{currentTable.databaseName}</Descriptions.Item><Descriptions.Item label="表名">{currentTable.tableName}</Descriptions.Item><Descriptions.Item label="表描述">{currentTable.description}</Descriptions.Item><Descriptions.Item label="敏感等级">{currentTable.sensitivityLevel}</Descriptions.Item><Descriptions.Item label="敏感标签">{currentTable.sensitivityTags}</Descriptions.Item><Descriptions.Item label="AI敏感等级">{currentTable.aiSensitivityLevel}</Descriptions.Item><Descriptions.Item label="AI敏感标签">{currentTable.aiSensitivityTags}</Descriptions.Item><Descriptions.Item label="人审是否敏感">{currentTable.manualSensitive ? '是' : '否'}</Descriptions.Item><Descriptions.Item label="创建时间">{currentTable.createTime}</Descriptions.Item><Descriptions.Item label="修改时间">{currentTable.modifyTime}</Descriptions.Item></Descriptions><Card title="列信息" style={{ marginTop: 20 }}><Table
+          {currentTable && (<><Descriptions bordered column={2}><Descriptions.Item label="实例">{currentTable.instance}</Descriptions.Item><Descriptions.Item label="数据库名">{currentTable.databaseName}</Descriptions.Item><Descriptions.Item label="表名">{currentTable.tableName}</Descriptions.Item><Descriptions.Item label="表描述">{currentTable.description}</Descriptions.Item><Descriptions.Item label="敏感等级">{currentTable.sensitivityLevel}</Descriptions.Item><Descriptions.Item label="敏感标签">{currentTable.sensitivityTags}</Descriptions.Item><Descriptions.Item label="AI敏感等级">{currentTable.aiSensitivityLevel}</Descriptions.Item><Descriptions.Item label="AI敏感标签">{currentTable.aiSensitivityTags}</Descriptions.Item><Descriptions.Item label="人工打标" span={2}><Select
+                    style={{ minWidth: 200 }}
+                    allowClear
+                    placeholder="默认（未人工打标）"
+                    value={currentTable.manualReview || undefined}
+                    onChange={async (v) => {
+                      try {
+                        const res = await mysqlTableApi.updateManualReview({
+                          id: currentTable.id,
+                          manualReview: v,
+                        });
+                        if (res.code === 200) {
+                          message.success('已更新人工打标');
+                          const next = v ?? null;
+                          setCurrentTable({ ...currentTable, manualReview: next });
+                          setTableData((rows) =>
+                            rows.map((r) => (r.id === currentTable.id ? { ...r, manualReview: next } : r)),
+                          );
+                        } else {
+                          message.error(res.message || '更新失败');
+                        }
+                      } catch (e) {
+                        message.error('网络错误');
+                        console.error(e);
+                      }
+                    }}
+                  >
+                    {MANUAL_REVIEW_OPTIONS.map((o) => (
+                      <Option key={o.value} value={o.value}>
+                        {o.label}
+                      </Option>
+                    ))}
+                  </Select></Descriptions.Item><Descriptions.Item label="创建时间">{currentTable.createTime}</Descriptions.Item><Descriptions.Item label="修改时间">{currentTable.modifyTime}</Descriptions.Item></Descriptions><Card title="列信息" style={{ marginTop: 20 }}><Table
                 columns={[
                   {
                     title: '列名',

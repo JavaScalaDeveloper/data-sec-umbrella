@@ -29,4 +29,9 @@ public interface MySQLTableInfoService extends IService<MySQLTableInfo> {
      * 删除表信息
      */
     boolean delete(Long id);
+
+    /**
+     * 仅更新表资产的人工打标字段；manualReview 为 null 或空白表示清除打标。
+     */
+    boolean updateManualReview(Long id, String manualReview);
 }

@@ -29,4 +29,9 @@ public interface MySQLDatabaseInfoService extends IService<MySQLDatabaseInfo> {
      * 删除数据库信息
      */
     boolean delete(Long id);
+
+    /**
+     * 仅更新数据库资产的人工打标字段；manualReview 为 null 或空白表示清除打标。
+     */
+    boolean updateManualReview(Long id, String manualReview);
 }
