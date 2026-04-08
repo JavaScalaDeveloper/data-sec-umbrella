@@ -1,5 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.dto.response;
 
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
 import java.util.List;
 
 /**
@@ -25,6 +26,11 @@ public class DatabasePolicyTestRulesResponse {
      * AI分析详情
      */
     private String aiDetail;
+
+    /**
+     * AI识别出的敏感样例（当 aiPassed=true 时返回）。
+     */
+    private List<DatabasePolicyTestRulesRequest.TestData> aiSensitiveSamples;
 
     /**
      * 规则命中详情
@@ -102,5 +108,13 @@ public class DatabasePolicyTestRulesResponse {
 
     public void setAiDetail(String aiDetail) {
         this.aiDetail = aiDetail;
+    }
+
+    public List<DatabasePolicyTestRulesRequest.TestData> getAiSensitiveSamples() {
+        return aiSensitiveSamples;
+    }
+
+    public void setAiSensitiveSamples(List<DatabasePolicyTestRulesRequest.TestData> aiSensitiveSamples) {
+        this.aiSensitiveSamples = aiSensitiveSamples;
     }
 }

@@ -152,6 +152,7 @@ const DatabaseSecurity: React.FC = () => {
         columnValues: ['']
     }]);
     const [validationResult, setValidationResult] = useState<any>(null);
+    const currentDbType = activeTab === 'clickhouse' ? 'Clickhouse' : 'MySQL';
 
     useEffect(() => {
         if (classificationRules.length > 0) {
@@ -187,6 +188,7 @@ const DatabaseSecurity: React.FC = () => {
                 const response = await databasePolicyApi.getPage({
                     current: pagination.current,
                     size: pagination.pageSize,
+                    databaseType: currentDbType,
                     ...params,
                 });
                 console.log('响应数据:', response);
@@ -214,7 +216,7 @@ const DatabaseSecurity: React.FC = () => {
         if (activeMenu === '/policy-management' || activeMenu === '/data-source') {
             fetchData();
         }
-    }, [pagination.current, pagination.pageSize, activeMenu]);
+    }, [pagination.current, pagination.pageSize, activeMenu, activeTab]);
 
     // 监听policies变化
     useEffect(() => {
@@ -433,6 +435,7 @@ const DatabaseSecurity: React.FC = () => {
                 creator: values.creator,
                 sensitivityLevel: values.sensitivity_level,
                 hideExample: values.hide_example,
+                databaseType: currentDbType,
             };
             fetchData(params);
         }
@@ -603,7 +606,6 @@ const DatabaseSecurity: React.FC = () => {
                     description: data.description,
                     sensitivityLevel: data.sensitivityLevel,
                     hideExample: data.hideExample,
-                    databaseType: data.databaseType,
                     ruleExpression: data.ruleExpression || '',
                     aiRule: data.aiRule || '',
                 });
@@ -658,12 +660,43 @@ const DatabaseSecurity: React.FC = () => {
             const response = await databasePolicyApi.testRules({
                 classificationRules: classificationRules,
                 ruleExpression: formValues.ruleExpression,
-                aiRule: formValues.aiRule,
                 testData: classificationRulesData,
-                databaseType: formValues.databaseType,
+                databaseType: currentDbType,
             });
             if (response.code === 200) {
                 setValidationResult(response.data);
+                setValidationResult((prev: any) => ({
+                    ...(prev || response.data),
+                    aiPassed: false,
+                    aiDetail: 'AI规则流式测试中...',
+                }));
+                await databasePolicyApi.testAiRulesStream(
+                    {
+                        aiRule: formValues.aiRule,
+                        testData: classificationRulesData,
+                        databaseType: currentDbType,
+                    },
+                    (chunk: string) => {
+                        setValidationResult((prev: any) => ({
+                            ...(prev || {}),
+                            aiDetail: `${prev?.aiDetail && prev.aiDetail !== 'AI规则流式测试中...' ? prev.aiDetail : ''}${chunk}`,
+                        }));
+                    },
+                    (done: { aiPassed: boolean; aiDetail: string }) => {
+                        setValidationResult((prev: any) => ({
+                            ...(prev || {}),
+                            aiPassed: done.aiPassed,
+                            aiDetail: done.aiDetail || prev?.aiDetail,
+                        }));
+                    },
+                    (err: string) => {
+                        setValidationResult((prev: any) => ({
+                            ...(prev || {}),
+                            aiPassed: false,
+                            aiDetail: `AI规则测试失败: ${err}`,
+                        }));
+                    }
+                );
             } else {
                 message.error(response.message || '测试规则失败');
             }
@@ -717,6 +750,7 @@ const DatabaseSecurity: React.FC = () => {
                     classificationRules: JSON.stringify(rulesWithCorrectIds),
                     ruleExpression: values.ruleExpression,
                     aiRule: values.aiRule,
+                    databaseType: currentDbType,
                 });
                 if (response.code === 200) {
                     message.success('编辑成功');
@@ -734,7 +768,7 @@ const DatabaseSecurity: React.FC = () => {
                     classificationRules: JSON.stringify(rulesWithCorrectIds),
                     ruleExpression: values.ruleExpression,
                     aiRule: values.aiRule,
-                    databaseType: values.databaseType,
+                    databaseType: currentDbType,
                 });
                 if (response.code === 200) {
                     message.success('新增成功');
@@ -914,9 +948,71 @@ const DatabaseSecurity: React.FC = () => {
                                         />
                                     </TabPane>
                                     <TabPane tab="Clickhouse" key="clickhouse">
-                                        <div
-                                            style={{textAlign: 'center', padding: '50px'}}>Clickhouse策略管理功能开发中
-                                        </div>
+                                        <Card style={{marginBottom: '24px'}}>
+                                            <Form form={form} layout="inline">
+                                                <Row gutter={16}>
+                                                    <Col span={6}>
+                                                        <Form.Item name="policy_code" label="策略Code">
+                                                            <Input placeholder="请输入策略Code"/>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={6}>
+                                                        <Form.Item name="policy_name" label="策略名称">
+                                                            <Input placeholder="请输入策略名称"/>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={6}>
+                                                        <Form.Item name="creator" label="创建人">
+                                                            <Input placeholder="请输入创建人"/>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={6}>
+                                                        <Form.Item name="sensitivity_level" label="敏感等级">
+                                                            <Select placeholder="请选择敏感等级"
+                                                                    style={{width: '100%'}}>
+                                                                <Option value={1}>1-低</Option>
+                                                                <Option value={2}>2-中低</Option>
+                                                                <Option value={3}>3-中</Option>
+                                                                <Option value={4}>4-中高</Option>
+                                                                <Option value={5}>5-高</Option>
+                                                            </Select>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={6}>
+                                                        <Form.Item name="hide_example" label="隐藏样例">
+                                                            <Select placeholder="请选择是否隐藏样例"
+                                                                    style={{width: '100%'}}>
+                                                                <Option value={0}>否</Option>
+                                                                <Option value={1}>是</Option>
+                                                            </Select>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={6}>
+                                                        <Space>
+                                                            <Button type="primary" icon={<SearchOutlined/>}
+                                                                    onClick={handleSearch}>查询</Button>
+                                                            <Button onClick={handleReset}>重置</Button>
+                                                            <Button type="primary" icon={<PlusOutlined/>} onClick={handleAdd}>新增策略</Button>
+                                                        </Space>
+                                                    </Col>
+                                                </Row>
+                                            </Form>
+                                        </Card>
+                                        <Table
+                                            columns={columns}
+                                            dataSource={policies}
+                                            rowKey="id"
+                                            loading={loading}
+                                            pagination={{
+                                                current: pagination.current,
+                                                pageSize: pagination.pageSize,
+                                                total: pagination.total,
+                                                showSizeChanger: true,
+                                                showTotal: (total) => `共 ${total} 条`,
+                                                onChange: handlePaginationChange,
+                                            }}
+                                            style={{width: '100%'}}
+                                        />
                                     </TabPane>
                                 </Tabs>
                             </>
@@ -1107,22 +1203,6 @@ const DatabaseSecurity: React.FC = () => {
                             <Option value={1}>是</Option>
                         </Select>
                     </Form.Item>
-                    <Form.Item
-                        name="databaseType"
-                        label="数据库类型"
-                        rules={[{required: true, message: '请选择数据库类型'}]}
-                    >
-                        <Select 
-                            placeholder="请选择数据库类型"
-                            disabled={activeMenu === '/mysql'}
-                            defaultValue={activeMenu === '/mysql' ? 'MySQL' : undefined}
-                        >
-                            <Option value="MySQL">MySQL</Option>
-                            <Option value="Clickhouse">Clickhouse</Option>
-                            <Option value="PostgreSQL">PostgreSQL</Option>
-                            <Option value="Oracle">Oracle</Option>
-                        </Select>
-                    </Form.Item>
                     <Form.Item label="分类规则" required>
                         <div style={{marginBottom: 16}}>
                             <Button type="primary" onClick={addRule} icon={<PlusOutlined/>}>添加规则</Button>
@@ -1179,6 +1259,8 @@ const DatabaseSecurity: React.FC = () => {
                                                 onChange={(value) => handleRuleChange(record.id, 'conditionType', value)}
                                                 placeholder="请选择条件类型"
                                             >
+                                                <Option value="正则匹配">正则匹配</Option>
+                                                <Option value="非正则匹配">非正则匹配</Option>
                                                 <Option value="包含">包含</Option>
                                                 <Option value="不包含">不包含</Option>
                                                 <Option value="等于">等于</Option>
@@ -1193,8 +1275,6 @@ const DatabaseSecurity: React.FC = () => {
                                                 <Option value="小于">小于</Option>
                                                 <Option value="大于等于">大于等于</Option>
                                                 <Option value="小于等于">小于等于</Option>
-                                                <Option value="正则匹配">正则匹配</Option>
-                                                <Option value="非正则匹配">非正则匹配</Option>
                                                 <Option value="内置算法">内置算法</Option>
                                             </Select>
                                         </Form.Item>

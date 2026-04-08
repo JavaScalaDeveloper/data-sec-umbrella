@@ -11,6 +11,9 @@ import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJ
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobService;
 import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("api/db-asset/mysql/offline-scan-job")
+@AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.READ)
 public class DbAssetMysqlScanOfflineJobController {
 
     private final DbAssetMysqlScanOfflineJobService offlineScanJobService;
@@ -83,6 +87,7 @@ public class DbAssetMysqlScanOfflineJobController {
     }
 
     @PostMapping("/create")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Long> create(@RequestBody DbAssetMysqlScanOfflineJobSaveRequest request) {
         try {
             Long id = offlineScanJobService.create(request);
@@ -93,6 +98,7 @@ public class DbAssetMysqlScanOfflineJobController {
     }
 
     @PostMapping("/update")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> update(@RequestBody DbAssetMysqlScanOfflineJobSaveRequest request) {
         try {
             boolean ok = offlineScanJobService.update(request);
@@ -106,6 +112,7 @@ public class DbAssetMysqlScanOfflineJobController {
     }
 
     @PostMapping("/delete")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> delete(@RequestBody DbAssetMysqlScanOfflineJobIdRequest request) {
         if (request.getId() == null) {
             return Result.error("id不能为空");
@@ -118,6 +125,7 @@ public class DbAssetMysqlScanOfflineJobController {
     }
 
     @PostMapping("/execute")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Long> execute(@RequestBody DbAssetMysqlScanOfflineJobIdRequest request) {
         try {
             Long instanceId = offlineScanJobService.execute(request);

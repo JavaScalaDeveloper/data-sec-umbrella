@@ -30,6 +30,7 @@
         <aviator.version>5.3.0</aviator.version>
         <lombok.version>1.18.34</lombok.version>
         <fastjson2.version>2.0.54</fastjson2.version>
+        <langchain4j.version>1.12.2</langchain4j.version>
         <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
         <rocketmq-client.version>4.9.7</rocketmq-client.version>
         <rocketmq-tools.version>4.9.7</rocketmq-tools.version>
@@ -66,6 +67,16 @@
                 <groupId>com.alibaba.fastjson2</groupId>
                 <artifactId>fastjson2</artifactId>
                 <version>${fastjson2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-ollama</artifactId>
+                <version>${langchain4j.version}</version>
             </dependency>
             <!-- RocketMQ 依赖暂留（可后续移除），manager 已切换 RabbitMQ -->
             <dependency>

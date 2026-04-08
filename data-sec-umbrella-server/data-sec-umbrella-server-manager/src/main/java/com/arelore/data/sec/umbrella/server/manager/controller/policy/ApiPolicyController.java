@@ -6,6 +6,9 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.ApiPolicyRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.ApiPolicyResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.core.service.ApiPolicyService;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("api/api-policy")
+@AdminPermission(product = ProductCode.API, action = PermissionAction.READ)
 public class ApiPolicyController {
 
     private final ApiPolicyService apiPolicyService;
@@ -53,12 +57,14 @@ public class ApiPolicyController {
     }
 
     @PostMapping("/create")
+    @AdminPermission(product = ProductCode.API, action = PermissionAction.WRITE)
     public Result<Long> create(@RequestBody ApiPolicyRequest apiPolicyRequest) {
         Long id = apiPolicyService.create(apiPolicyRequest);
         return Result.success(id);
     }
 
     @PostMapping("/update")
+    @AdminPermission(product = ProductCode.API, action = PermissionAction.WRITE)
     public Result<Boolean> update(@RequestBody ApiPolicyRequest apiPolicyRequest) {
         boolean result = apiPolicyService.update(apiPolicyRequest.getId(), apiPolicyRequest);
         if (result) {
@@ -68,6 +74,7 @@ public class ApiPolicyController {
     }
 
     @PostMapping("/delete")
+    @AdminPermission(product = ProductCode.API, action = PermissionAction.WRITE)
     public Result<Boolean> delete(@RequestBody ApiPolicyQueryRequest request) {
         boolean result = apiPolicyService.delete(request.getId());
         if (result) {

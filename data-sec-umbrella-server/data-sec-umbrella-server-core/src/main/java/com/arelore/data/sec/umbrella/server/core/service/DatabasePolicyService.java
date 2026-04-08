@@ -58,4 +58,14 @@ public interface DatabasePolicyService {
      * 测试规则
      */
     DatabasePolicyTestRulesResponse testRules(DatabasePolicyTestRulesRequest request);
+
+    /**
+     * 仅测试分类规则与规则表达式（不调用AI）。
+     */
+    DatabasePolicyTestRulesResponse testRulesOnly(DatabasePolicyTestRulesRequest request);
+
+    /**
+     * 仅测试AI规则。
+     */
+    DatabasePolicyTestRulesResponse testAiRule(DatabasePolicyTestRulesRequest request);
 }

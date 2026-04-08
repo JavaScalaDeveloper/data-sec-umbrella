@@ -8,6 +8,9 @@ import com.arelore.data.sec.umbrella.server.core.enums.MetricPeriodEnum;
 import com.arelore.data.sec.umbrella.server.core.enums.OverviewMetricCodeEnum;
 import com.arelore.data.sec.umbrella.server.core.service.OverviewMetricSnapshotService;
 import com.arelore.data.sec.umbrella.server.manager.overview.OverviewMetricAggregator;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +30,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("api/overview/database")
+@AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.READ)
 public class DatabaseOverviewController {
 
     private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -85,6 +89,7 @@ public class DatabaseOverviewController {
      * 手动触发概览指标刷新（当前仅支持 MySQL 日级）。
      */
     @PostMapping("/refresh")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> refresh(@RequestBody(required = false) OverviewMetricQueryRequest request) {
         String databaseType = request != null && StringUtils.hasText(request.getDatabaseType())
                 ? request.getDatabaseType().trim()

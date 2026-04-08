@@ -9,6 +9,7 @@ import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.core.entity.DatabasePolicy;
 import com.arelore.data.sec.umbrella.server.core.mapper.DatabasePolicyMapper;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
+import com.arelore.data.sec.umbrella.server.core.service.llm.AiRuleLlmService;
 import com.arelore.data.sec.umbrella.server.core.service.checker.RulesChecker;
 import com.arelore.data.sec.umbrella.server.core.service.factory.RulesCheckerFactory;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -17,6 +18,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,7 +33,11 @@ import java.util.stream.Collectors;
  */
 @Service
 public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper, DatabasePolicy> implements DatabasePolicyService {
-    
+    private final AiRuleLlmService aiRuleLlmService;
+
+    public DatabasePolicyServiceImpl(AiRuleLlmService aiRuleLlmService) {
+        this.aiRuleLlmService = aiRuleLlmService;
+    }
 
 
     @Override
@@ -40,9 +46,29 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
         LambdaQueryWrapper<DatabasePolicy> queryWrapper = new LambdaQueryWrapper<>();
         
         // 如果有策略编码，添加查询条件
-        if (request.getPolicyCode() != null && !request.getPolicyCode().trim().isEmpty()) {
-            queryWrapper.like(DatabasePolicy::getPolicyCode, request.getPolicyCode());
+        if (StringUtils.hasText(request.getPolicyCode())) {
+            queryWrapper.like(DatabasePolicy::getPolicyCode, request.getPolicyCode().trim());
         }
+        if (StringUtils.hasText(request.getPolicyName())) {
+            queryWrapper.like(DatabasePolicy::getPolicyName, request.getPolicyName().trim());
+        }
+        if (StringUtils.hasText(request.getCreator())) {
+            queryWrapper.like(DatabasePolicy::getCreator, request.getCreator().trim());
+        }
+        if (StringUtils.hasText(request.getSensitivityLevel())) {
+            try {
+                queryWrapper.eq(DatabasePolicy::getSensitivityLevel, Integer.parseInt(request.getSensitivityLevel().trim()));
+            } catch (NumberFormatException ignore) {
+                // ignore invalid sensitivity level
+            }
+        }
+        if (request.getHideExample() != null) {
+            queryWrapper.eq(DatabasePolicy::getHideExample, request.getHideExample());
+        }
+        if (StringUtils.hasText(request.getDatabaseType())) {
+            queryWrapper.eq(DatabasePolicy::getDatabaseType, request.getDatabaseType().trim());
+        }
+        queryWrapper.orderByDesc(DatabasePolicy::getId);
         
         // 创建分页对象
         Page<DatabasePolicy> page = new Page<>(request.getCurrent(), request.getSize());
@@ -139,22 +165,47 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
 
     @Override
     public DatabasePolicyTestRulesResponse testRules(DatabasePolicyTestRulesRequest request) {
+        // 兼容旧接口：组合规则 + AI 两部分
+        DatabasePolicyTestRulesResponse ruleResp = testRulesOnly(request);
+        DatabasePolicyTestRulesResponse aiResp = testAiRule(request);
+        ruleResp.setAiPassed(aiResp.isAiPassed());
+        ruleResp.setAiDetail(aiResp.getAiDetail());
+        return ruleResp;
+    }
+
+    @Override
+    public DatabasePolicyTestRulesResponse testRulesOnly(DatabasePolicyTestRulesRequest request) {
         String databaseType = request.getDatabaseType();
-        
         // 根据数据库类型获取对应的规则检查器
         RulesChecker rulesChecker = RulesCheckerFactory.getRulesChecker(databaseType);
-        
         if (rulesChecker == null) {
-            // 如果没有找到对应的规则检查器，使用默认实现
             DatabasePolicyTestRulesResponse response = new DatabasePolicyTestRulesResponse();
             response.setRulePassed(false);
             response.setAiPassed(false);
             response.setAiDetail("不支持的数据库类型: " + databaseType);
             return response;
         }
-        
-        // 使用对应的规则检查器进行规则检查
-        return rulesChecker.checkRules(request);
+
+        DatabasePolicyTestRulesResponse all = rulesChecker.checkRules(request);
+        // 仅保留规则侧结果，避免 test-rules 触发 LLM 网络调用
+        all.setAiPassed(false);
+        all.setAiDetail("AI规则未执行（请调用 /api/database-policy/test-ai-rules-stream）");
+        return all;
+    }
+
+    @Override
+    public DatabasePolicyTestRulesResponse testAiRule(DatabasePolicyTestRulesRequest request) {
+        DatabasePolicyTestRulesResponse response = new DatabasePolicyTestRulesResponse();
+        AiRuleLlmService.AiRuleResult result =
+                aiRuleLlmService.evaluate(request.getDatabaseType(), request.getAiRule(), request.getTestData());
+        response.setRulePassed(false);
+        response.setAiPassed(result.passed());
+        response.setAiDetail(result.detail());
+        if (result.passed() && request.getTestData() != null && !request.getTestData().isEmpty()) {
+            // 当前AI规则是对整批样例判断，命中时将本次参与判断的样例返回前端用于人工复核
+            response.setAiSensitiveSamples(request.getTestData());
+        }
+        return response;
     }
     
     /**

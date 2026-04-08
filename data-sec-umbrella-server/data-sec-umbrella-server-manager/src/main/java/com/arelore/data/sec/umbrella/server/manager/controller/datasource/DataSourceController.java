@@ -4,6 +4,9 @@ import com.arelore.data.sec.umbrella.server.core.common.Result;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DataSourceRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DataSourceResponse;
 import com.arelore.data.sec.umbrella.server.core.service.DataSourceService;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("api/data-source")
+@AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.READ)
 public class DataSourceController {
 
     private final DataSourceService dataSourceService;
@@ -66,6 +70,7 @@ public class DataSourceController {
      * 新增数据源
      */
     @PostMapping("/create")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Long> create(@RequestBody DataSourceRequest request) {
         Long id = dataSourceService.create(request);
         return Result.success(id);
@@ -75,6 +80,7 @@ public class DataSourceController {
      * 更新数据源
      */
     @PostMapping("/update")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> update(@RequestBody DataSourceRequest request) {
         boolean result = dataSourceService.update(request);
         return Result.success(result);
@@ -84,6 +90,7 @@ public class DataSourceController {
      * 删除数据源
      */
     @PostMapping("/delete")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> delete(@RequestBody DataSourceRequest request) {
         boolean result = dataSourceService.delete(request);
         return Result.success(result);

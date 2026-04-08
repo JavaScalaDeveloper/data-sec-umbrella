@@ -6,6 +6,9 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.MessagePolicyReques
 import com.arelore.data.sec.umbrella.server.core.dto.response.MessagePolicyResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.core.service.MessagePolicyService;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("api/message-policy")
+@AdminPermission(product = ProductCode.MQ, action = PermissionAction.READ)
 public class MessagePolicyController {
 
     private final MessagePolicyService messagePolicyService;
@@ -56,12 +60,14 @@ public class MessagePolicyController {
     }
 
     @PostMapping("/create")
+    @AdminPermission(product = ProductCode.MQ, action = PermissionAction.WRITE)
     public Result<Long> create(@RequestBody MessagePolicyRequest messagePolicyRequest) {
         Long id = messagePolicyService.create(messagePolicyRequest);
         return Result.success(id);
     }
 
     @PostMapping("/update")
+    @AdminPermission(product = ProductCode.MQ, action = PermissionAction.WRITE)
     public Result<Boolean> update(@RequestBody MessagePolicyRequest messagePolicyRequest) {
         boolean result = messagePolicyService.update(messagePolicyRequest.getId(), messagePolicyRequest);
         if (result) {
@@ -71,6 +77,7 @@ public class MessagePolicyController {
     }
 
     @PostMapping("/delete")
+    @AdminPermission(product = ProductCode.MQ, action = PermissionAction.WRITE)
     public Result<Boolean> delete(@RequestBody MessagePolicyQueryRequest request) {
         boolean result = messagePolicyService.delete(request.getId());
         if (result) {

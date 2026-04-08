@@ -43,10 +43,23 @@ async function getRSAPublicKey(): Promise<string> {
 
 // 请求方法
 async function request<T>(url: string, options: RequestInit): Promise<T> {
+    const authRaw = localStorage.getItem('adminCenterAuth');
+    let auth: any = null;
+    try {
+        auth = authRaw ? JSON.parse(authRaw) : null;
+    } catch {
+        auth = null;
+    }
     const response = await fetch(`${BASE_URL}${url}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
+            ...(auth ? {
+                'X-Admin-Username': auth.username || '',
+                'X-Admin-Role': auth.roleCode || '',
+                'X-Super-Admin': String(!!auth.superAdmin),
+                'X-Product-Permissions': Array.isArray(auth.productPermissions) ? auth.productPermissions.join(',') : '',
+            } : {}),
             ...options.headers,
         },
     });
@@ -135,6 +148,66 @@ export const databasePolicyApi = {
             method: 'POST',
             body: JSON.stringify(data),
         });
+    },
+    // 流式测试AI规则
+    testAiRulesStream: async (
+        data: any,
+        onChunk: (text: string) => void,
+        onDone: (result: { aiPassed: boolean; aiDetail: string }) => void,
+        onError?: (err: string) => void,
+    ) => {
+        const response = await fetch(`${BASE_URL}/api/database-policy/test-ai-rules-stream`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Username': JSON.parse(localStorage.getItem('adminCenterAuth') || '{}')?.username || '',
+                'X-Admin-Role': JSON.parse(localStorage.getItem('adminCenterAuth') || '{}')?.roleCode || '',
+                'X-Super-Admin': String(!!JSON.parse(localStorage.getItem('adminCenterAuth') || '{}')?.superAdmin),
+                'X-Product-Permissions': (JSON.parse(localStorage.getItem('adminCenterAuth') || '{}')?.productPermissions || []).join(','),
+            },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok || !response.body) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let currentEvent = '';
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                break;
+            }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const raw of lines) {
+                const line = raw.trim();
+                if (!line) {
+                    currentEvent = '';
+                    continue;
+                }
+                if (line.startsWith('event:')) {
+                    currentEvent = line.slice(6).trim();
+                    continue;
+                }
+                if (line.startsWith('data:')) {
+                    const payload = line.slice(5).trim();
+                    if (currentEvent === 'chunk') {
+                        onChunk(payload);
+                    } else if (currentEvent === 'done') {
+                        try {
+                            onDone(JSON.parse(payload));
+                        } catch {
+                            onDone({ aiPassed: false, aiDetail: payload });
+                        }
+                    } else if (currentEvent === 'error') {
+                        onError?.(payload);
+                    }
+                }
+            }
+        }
     },
 };
 
@@ -589,6 +662,54 @@ export const databaseOverviewApi = {
         }>('/api/overview/database/refresh', {
             method: 'POST',
             body: JSON.stringify(params),
+        });
+    },
+};
+
+// 管理中心-账号管理API
+export const adminCenterApi = {
+    login: async (params: { username: string; password: string }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: { success: boolean; username: string; roleCode: string; superAdmin: boolean; productPermissions: string[] };
+        }>('/api/admin-center/account/login', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    listAccounts: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: { records: any[]; total: number; current: number; size: number };
+        }>('/api/admin-center/account/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    createAccount: async (params: any) => {
+        return request<{ code: number; message: string; data: number }>('/api/admin-center/account/create', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    updateAccount: async (params: any) => {
+        return request<{ code: number; message: string; data: boolean }>('/api/admin-center/account/update', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    resetPassword: async (params: { id: number; password: string }) => {
+        return request<{ code: number; message: string; data: boolean }>('/api/admin-center/account/reset-password', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    deleteAccount: async (id: number) => {
+        return request<{ code: number; message: string; data: boolean }>('/api/admin-center/account/delete', {
+            method: 'POST',
+            body: JSON.stringify({ id }),
         });
     },
 };

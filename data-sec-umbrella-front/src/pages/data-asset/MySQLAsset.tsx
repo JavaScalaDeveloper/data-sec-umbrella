@@ -90,12 +90,12 @@ const MySQLAsset: React.FC = () => {
   const [instanceUsernameSearch, setInstanceUsernameSearch] = useState<string>('');
   const [databaseInstanceSearch, setDatabaseInstanceSearch] = useState<string>('');
   const [databaseNameSearch, setDatabaseNameSearch] = useState<string>('');
-  const [databaseSensitivityLevelSearch, setDatabaseSensitivityLevelSearch] = useState<string>('');
+  const [databaseSensitivityLevelSearch, setDatabaseSensitivityLevelSearch] = useState<string[]>([]);
   const [databaseSensitivityTagsSearch, setDatabaseSensitivityTagsSearch] = useState<string>('');
   const [tableInstanceSearch, setTableInstanceSearch] = useState<string>('');
   const [tableDatabaseSearch, setTableDatabaseSearch] = useState<string>('');
   const [tableNameSearch, setTableNameSearch] = useState<string>('');
-  const [tableSensitivityLevelSearch, setTableSensitivityLevelSearch] = useState<string>('');
+  const [tableSensitivityLevelSearch, setTableSensitivityLevelSearch] = useState<string[]>([]);
   const [tableSensitivityTagsSearch, setTableSensitivityTagsSearch] = useState<string>('');
 
   const [instancePagination, setInstancePagination] = useState({ current: 1, pageSize: 10, total: 0 });
@@ -230,45 +230,6 @@ const MySQLAsset: React.FC = () => {
       dataIndex: 'aiSensitivityTags',
       key: 'aiSensitivityTags',
       render: (value: string) => renderTags(value),
-    },
-    {
-      title: '人工打标',
-      dataIndex: 'manualReview',
-      key: 'manualReview',
-      width: 150,
-      render: (_text, record) => (
-        <Select
-          style={{ minWidth: 120 }}
-          allowClear
-          placeholder="默认"
-          value={record.manualReview || undefined}
-          onChange={async (v) => {
-            try {
-              const res = await mysqlDatabaseApi.updateManualReview({
-                id: record.id,
-                manualReview: v,
-              });
-              if (res.code === 200) {
-                message.success('已更新人工打标');
-                setDatabaseData((rows) =>
-                  rows.map((r) => (r.id === record.id ? { ...r, manualReview: v ?? null } : r)),
-                );
-              } else {
-                message.error(res.message || '更新失败');
-              }
-            } catch (e) {
-              message.error('网络错误');
-              console.error(e);
-            }
-          }}
-        >
-          {MANUAL_REVIEW_OPTIONS.map((o) => (
-            <Option key={o.value} value={o.value}>
-              {o.label}
-            </Option>
-          ))}
-        </Select>
-      ),
     },
     {
       title: '创建时间',
@@ -449,7 +410,7 @@ const MySQLAsset: React.FC = () => {
         size: pageSize,
         instance: databaseInstanceSearch,
         databaseName: databaseNameSearch,
-        sensitivityLevel: databaseSensitivityLevelSearch,
+        sensitivityLevelList: databaseSensitivityLevelSearch,
         sensitivityTags: databaseSensitivityTagsSearch,
       });
       if (response.code === 200) {
@@ -480,7 +441,7 @@ const MySQLAsset: React.FC = () => {
         instance: tableInstanceSearch,
         databaseName: tableDatabaseSearch,
         tableName: tableNameSearch,
-        sensitivityLevel: tableSensitivityLevelSearch,
+        sensitivityLevelList: tableSensitivityLevelSearch,
         sensitivityTags: tableSensitivityTagsSearch,
       });
       if (response.code === 200) {
@@ -608,10 +569,11 @@ const MySQLAsset: React.FC = () => {
                           onPressEnter={() => fetchDatabases(1, databasePagination.pageSize)}
                           style={{ width: 220 }}
                         /></Form.Item><Form.Item label="敏感等级"><Select
+                          mode="multiple"
                           allowClear
                           placeholder="请选择敏感等级"
-                          value={databaseSensitivityLevelSearch || undefined}
-                          onChange={(v) => setDatabaseSensitivityLevelSearch(v ? String(v) : '')}
+                          value={databaseSensitivityLevelSearch}
+                          onChange={(v) => setDatabaseSensitivityLevelSearch((v || []).map(String))}
                           style={{ width: 220 }}
                         ><Option value="1">1</Option><Option value="2">2</Option><Option value="3">3</Option><Option value="4">4</Option><Option value="5">5</Option></Select></Form.Item><Form.Item label="敏感标签"><Input
                           placeholder="请输入敏感标签"
@@ -655,10 +617,11 @@ const MySQLAsset: React.FC = () => {
                           onPressEnter={() => fetchTables(1, tablePagination.pageSize)}
                           style={{ width: 220 }}
                         /></Form.Item><Form.Item label="敏感等级"><Select
+                          mode="multiple"
                           allowClear
                           placeholder="请选择敏感等级"
-                          value={tableSensitivityLevelSearch || undefined}
-                          onChange={(v) => setTableSensitivityLevelSearch(v ? String(v) : '')}
+                          value={tableSensitivityLevelSearch}
+                          onChange={(v) => setTableSensitivityLevelSearch((v || []).map(String))}
                           style={{ width: 220 }}
                         ><Option value="1">1</Option><Option value="2">2</Option><Option value="3">3</Option><Option value="4">4</Option><Option value="5">5</Option></Select></Form.Item><Form.Item label="敏感标签"><Input
                           placeholder="请输入敏感标签"

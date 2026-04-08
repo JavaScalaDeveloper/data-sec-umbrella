@@ -2,9 +2,11 @@ package com.arelore.data.sec.umbrella.server.core.service.checker;
 
 import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
+import com.arelore.data.sec.umbrella.server.core.service.llm.AiRuleLlmService;
 import com.arelore.data.sec.umbrella.server.core.service.matcher.ConditionMatcher;
 import com.arelore.data.sec.umbrella.server.core.util.ConditionObjectValueExtractor;
 import com.arelore.data.sec.umbrella.server.core.util.RuleExpressionEvaluator;
+import com.arelore.data.sec.umbrella.server.core.util.SpringContextHolder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,9 +61,10 @@ public class MySQLRulesChecker extends AbstractDatabaseRulesChecker {
         response.setRulePassed(ruleExpressionPassed);
         
         // 测试AI规则
-        boolean aiPassed = testAiRule(request.getAiRule(), request.getTestData());
+        AiRuleLlmService.AiRuleResult aiResult = testAiRule(request.getAiRule(), request.getTestData());
+        boolean aiPassed = aiResult.passed();
         response.setAiPassed(aiPassed);
-        response.setAiDetail(aiPassed ? "MySQL AI规则验证通过" : "MySQL AI规则验证未通过");
+        response.setAiDetail(aiResult.detail());
         
         return response;
     }
@@ -125,13 +128,14 @@ public class MySQLRulesChecker extends AbstractDatabaseRulesChecker {
     /**
      * 测试AI规则
      */
-    private boolean testAiRule(String aiRule, List<DatabasePolicyTestRulesRequest.TestData> testData) {
+    private AiRuleLlmService.AiRuleResult testAiRule(String aiRule, List<DatabasePolicyTestRulesRequest.TestData> testData) {
         if (aiRule == null || aiRule.trim().isEmpty()) {
-            return false;
+            return new AiRuleLlmService.AiRuleResult(false, "AI规则为空");
         }
-        
-        // MySQL特定的AI规则测试逻辑
-        // 这里只是模拟实现
-        return true;
+        AiRuleLlmService service = SpringContextHolder.getBean(AiRuleLlmService.class);
+        if (service == null) {
+            return new AiRuleLlmService.AiRuleResult(false, "AI服务未初始化");
+        }
+        return service.evaluate(getDatabaseType(), aiRule, testData);
     }
 }

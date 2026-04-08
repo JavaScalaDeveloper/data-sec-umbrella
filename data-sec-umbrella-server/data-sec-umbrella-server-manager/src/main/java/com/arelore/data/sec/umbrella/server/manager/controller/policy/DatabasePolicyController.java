@@ -8,7 +8,13 @@ import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyResp
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
+import com.arelore.data.sec.umbrella.server.manager.service.DatabasePolicyStreamService;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -21,13 +27,17 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("api/database-policy")
+@AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.READ)
 public class DatabasePolicyController {
 
     private final DatabasePolicyService databasePolicyService;
+    private final DatabasePolicyStreamService databasePolicyStreamService;
 
     @Autowired
-    public DatabasePolicyController(DatabasePolicyService databasePolicyService) {
+    public DatabasePolicyController(DatabasePolicyService databasePolicyService,
+                                    DatabasePolicyStreamService databasePolicyStreamService) {
         this.databasePolicyService = databasePolicyService;
+        this.databasePolicyStreamService = databasePolicyStreamService;
     }
 
     @PostMapping("/list")
@@ -55,12 +65,14 @@ public class DatabasePolicyController {
     }
 
     @PostMapping("/create")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Long> create(@RequestBody DatabasePolicyRequest databasePolicyRequest) {
         Long id = databasePolicyService.create(databasePolicyRequest);
         return Result.success(id);
     }
 
     @PostMapping("/update")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> update(@RequestBody DatabasePolicyRequest databasePolicyRequest) {
         boolean result = databasePolicyService.update(databasePolicyRequest.getId(), databasePolicyRequest);
         if (result) {
@@ -70,6 +82,7 @@ public class DatabasePolicyController {
     }
 
     @PostMapping("/delete")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> delete(@RequestBody DatabasePolicyQueryRequest request) {
         boolean result = databasePolicyService.delete(request.getId());
         if (result) {
@@ -80,7 +93,12 @@ public class DatabasePolicyController {
 
     @PostMapping("/test-rules")
     public Result<DatabasePolicyTestRulesResponse> testRules(@RequestBody DatabasePolicyTestRulesRequest request) {
-        DatabasePolicyTestRulesResponse response = databasePolicyService.testRules(request);
+        DatabasePolicyTestRulesResponse response = databasePolicyService.testRulesOnly(request);
         return Result.success(response);
+    }
+
+    @PostMapping(value = "/test-ai-rules-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter testAiRulesStream(@RequestBody DatabasePolicyTestRulesRequest request) {
+        return databasePolicyStreamService.testAiRulesStream(request);
     }
 }

@@ -5,6 +5,9 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.ManualReviewUpdateR
 import com.arelore.data.sec.umbrella.server.core.dto.request.PageRequest;
 import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("api/data-asset/mysql/table")
+@AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.READ)
 public class MySQLTableInfoController {
 
     private final MySQLTableInfoService mySQLTableInfoService;
@@ -48,6 +52,7 @@ public class MySQLTableInfoController {
      * 新增表信息
      */
     @PostMapping("/create")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Long> create(@RequestBody MySQLTableInfo tableInfo) {
         Long id = mySQLTableInfoService.create(tableInfo);
         return Result.success(id);
@@ -57,6 +62,7 @@ public class MySQLTableInfoController {
      * 更新表信息
      */
     @PostMapping("/update")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> update(@RequestBody MySQLTableInfo tableInfo) {
         boolean result = mySQLTableInfoService.update(tableInfo);
         return Result.success(result);
@@ -66,6 +72,7 @@ public class MySQLTableInfoController {
      * 仅更新表资产人工打标（忽略/误报/敏感）；未传或空字符串表示清除打标。
      */
     @PostMapping("/update-manual-review")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> updateManualReview(@RequestBody ManualReviewUpdateRequest request) {
         try {
             boolean ok = mySQLTableInfoService.updateManualReview(request.getId(), request.getManualReview());
@@ -79,6 +86,7 @@ public class MySQLTableInfoController {
      * 删除表信息
      */
     @PostMapping("/delete")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> delete(@RequestBody MySQLTableInfo request) {
         boolean result = mySQLTableInfoService.delete(request.getId());
         return Result.success(result);

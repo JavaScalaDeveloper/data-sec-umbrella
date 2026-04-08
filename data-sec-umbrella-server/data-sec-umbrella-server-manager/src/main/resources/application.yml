@@ -60,3 +60,16 @@ mybatis-plus:
 # 离线扫描分发调度间隔（毫秒）
 offline-scan:
   dispatch-interval-ms: 5000
+
+llm:
+  ollama:
+    enabled: ${LLM_OLLAMA_ENABLED:true}
+    base-url: ${LLM_OLLAMA_BASE_URL:http://book-n95:11434}
+    model-name: ${LLM_OLLAMA_MODEL:qwen3.5:0.8b}
+    fallback-model-name: ${LLM_OLLAMA_FALLBACK_MODEL:qwen3:0.6b}
+    timeout-seconds: ${LLM_OLLAMA_TIMEOUT_SECONDS:60}
+
+admin-center:
+  super-admin:
+    username: ${ADMIN_CENTER_SUPER_ADMIN_USERNAME:superadmin}
+    password: ${ADMIN_CENTER_SUPER_ADMIN_PASSWORD:superadmin123}

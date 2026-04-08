@@ -11,6 +11,10 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * MySQL数据库信息Service实现类
@@ -37,8 +41,18 @@ public class MySQLDatabaseInfoServiceImpl extends ServiceImpl<MySQLDatabaseInfoM
         }
         
         // 根据敏感等级查询
-        if (request.getSensitivityLevel() != null && !request.getSensitivityLevel().isEmpty()) {
-            queryWrapper.eq(MySQLDatabaseInfo::getSensitivityLevel, request.getSensitivityLevel());
+        if (request.getSensitivityLevelList() != null && !request.getSensitivityLevelList().isEmpty()) {
+            List<String> levels = request.getSensitivityLevelList().stream()
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .collect(Collectors.toList());
+            if (levels.size() == 1) {
+                queryWrapper.eq(MySQLDatabaseInfo::getSensitivityLevel, levels.get(0));
+            } else if (!levels.isEmpty()) {
+                queryWrapper.in(MySQLDatabaseInfo::getSensitivityLevel, levels);
+            }
+        } else if (StringUtils.hasText(request.getSensitivityLevel())) {
+            queryWrapper.eq(MySQLDatabaseInfo::getSensitivityLevel, request.getSensitivityLevel().trim());
         }
         
         // 根据敏感标签查询

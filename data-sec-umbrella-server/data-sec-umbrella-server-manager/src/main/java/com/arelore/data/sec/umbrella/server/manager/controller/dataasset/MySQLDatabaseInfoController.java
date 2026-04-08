@@ -5,6 +5,9 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.ManualReviewUpdateR
 import com.arelore.data.sec.umbrella.server.core.dto.request.PageRequest;
 import com.arelore.data.sec.umbrella.server.core.entity.MySQLDatabaseInfo;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLDatabaseInfoService;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("api/data-asset/mysql/database")
+@AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.READ)
 public class MySQLDatabaseInfoController {
 
     private final MySQLDatabaseInfoService mySQLDatabaseInfoService;
@@ -48,6 +52,7 @@ public class MySQLDatabaseInfoController {
      * 新增数据库信息
      */
     @PostMapping("/create")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Long> create(@RequestBody MySQLDatabaseInfo databaseInfo) {
         Long id = mySQLDatabaseInfoService.create(databaseInfo);
         return Result.success(id);
@@ -57,6 +62,7 @@ public class MySQLDatabaseInfoController {
      * 更新数据库信息
      */
     @PostMapping("/update")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> update(@RequestBody MySQLDatabaseInfo databaseInfo) {
         boolean result = mySQLDatabaseInfoService.update(databaseInfo);
         return Result.success(result);
@@ -66,6 +72,7 @@ public class MySQLDatabaseInfoController {
      * 仅更新数据库资产人工打标（忽略/误报/敏感）；未传或空字符串表示清除打标。
      */
     @PostMapping("/update-manual-review")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> updateManualReview(@RequestBody ManualReviewUpdateRequest request) {
         try {
             boolean ok = mySQLDatabaseInfoService.updateManualReview(request.getId(), request.getManualReview());
@@ -79,6 +86,7 @@ public class MySQLDatabaseInfoController {
      * 删除数据库信息
      */
     @PostMapping("/delete")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> delete(@RequestBody MySQLDatabaseInfo request) {
         boolean result = mySQLDatabaseInfoService.delete(request.getId());
         return Result.success(result);

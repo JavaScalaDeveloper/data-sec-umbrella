@@ -2,6 +2,8 @@ package com.arelore.data.sec.umbrella.server.core.dto.request;
 
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 分页查询请求
  *
@@ -39,6 +41,11 @@ public class PageRequest {
      * 敏感等级
      */
     private String sensitivityLevel;
+
+    /**
+     * 敏感等级列表（用于IN查询）
+     */
+    private List<String> sensitivityLevelList;
     
     /**
      * 敏感标签
