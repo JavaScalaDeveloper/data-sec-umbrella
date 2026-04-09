@@ -98,8 +98,21 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         {title: 'AI成功', dataIndex: 'aiSuccessCount', width: 90},
         {title: 'AI失败', dataIndex: 'aiFailCount', width: 90},
         {title: 'AI敏感', dataIndex: 'aiSensitiveCount', width: 90},
-        {title: 'AI应扫描', dataIndex: 'aiExpectedTotal', width: 100},
-        {title: 'AI已提交', dataIndex: 'aiSubmittedTotal', width: 100},
+        {
+            title: 'AI扫描进度',
+            width: 280,
+            render: (_, record) => {
+                const aiExpected = Number(record.aiExpectedTotal || 0);
+                const aiSubmitted = Number(record.aiSubmittedTotal || 0);
+                const aiConsumed = Number(record.aiSuccessCount || 0) + Number(record.aiFailCount || 0);
+                return (
+                    <div>
+                        <div>生产进度：{formatProgress(aiSubmitted, aiExpected)}</div>
+                        <div>消费进度：{formatProgress(aiConsumed, aiExpected)}</div>
+                    </div>
+                );
+            },
+        },
         {
             title: '创建/修改时间',
             width: 220,

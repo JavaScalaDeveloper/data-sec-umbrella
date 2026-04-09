@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Form, Input, Layout, Menu, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { TeamOutlined, UserOutlined } from '@ant-design/icons';
-import { adminCenterApi } from '../services/api';
+import { adminCenterApi, setAdminAuth } from '../services/api';
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -59,7 +59,7 @@ const AdminCenter: React.FC = () => {
             }
             setLoggedIn(true);
             setAuthInfo(res.data || null);
-            localStorage.setItem('adminCenterAuth', JSON.stringify(res.data || {}));
+            setAdminAuth(res.data || null);
             message.success(`登录成功，当前角色：${res.data?.roleCode || '-'}`);
         } catch (e: any) {
             if (e?.errorFields) return;

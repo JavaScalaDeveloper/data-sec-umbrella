@@ -22,6 +22,14 @@ public interface AdminUserService {
     AdminUserResponse verifyDbUser(String username, String password);
 
     /**
+     * 按用户名查询账号信息。
+     *
+     * @param username 用户名
+     * @return 账号信息，不存在返回null
+     */
+    AdminUserResponse getByUsername(String username);
+
+    /**
      * 分页查询账号列表。
      *
      * @param request 查询请求

@@ -26,10 +26,22 @@ public class RabbitMQOfflineScanConfig {
     }
 
     @Bean
+    public Queue offlineAiScanQueue() {
+        return QueueBuilder.durable(OfflineScanConstants.RABBIT_AI_QUEUE).build();
+    }
+
+    @Bean
     public Binding offlineScanBinding(DirectExchange offlineScanExchange, Queue offlineScanQueue) {
         return BindingBuilder.bind(offlineScanQueue)
                 .to(offlineScanExchange)
                 .with(OfflineScanConstants.RABBIT_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding offlineAiScanBinding(DirectExchange offlineScanExchange, Queue offlineAiScanQueue) {
+        return BindingBuilder.bind(offlineAiScanQueue)
+                .to(offlineScanExchange)
+                .with(OfflineScanConstants.RABBIT_AI_ROUTING_KEY);
     }
 }
 

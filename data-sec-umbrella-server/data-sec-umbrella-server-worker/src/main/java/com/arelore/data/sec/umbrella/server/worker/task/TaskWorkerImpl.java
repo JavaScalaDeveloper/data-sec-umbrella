@@ -1,5 +1,7 @@
 package com.arelore.data.sec.umbrella.server.worker.task;
 
+import com.alibaba.fastjson2.JSON;
+import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanConstants;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineMysqlScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
@@ -9,6 +11,7 @@ import com.arelore.data.sec.umbrella.server.worker.scanner.AssetScanResult;
 import com.arelore.data.sec.umbrella.server.worker.scanner.AssetScanner;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +38,9 @@ public class TaskWorkerImpl implements TaskWorker {
 
     @Autowired
     private DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     private final Map<String, AssetScanner> scannerMap = new ConcurrentHashMap<>();
 
@@ -74,11 +80,39 @@ public class TaskWorkerImpl implements TaskWorker {
                 if (result != null && result.sensitive()) {
                     incrementRedis(instanceId, "sensitive");
                 }
+                dispatchAiScanIfNeeded(payload, asset, result);
             } catch (Exception ex) {
                 incrementRedis(instanceId, "fail");
             }
         }
         syncInstanceProgress(instanceId);
+    }
+
+    private void dispatchAiScanIfNeeded(OfflineMysqlScanDispatchPayload payload, Map<String, Object> asset, AssetScanResult result) {
+        if (payload == null || payload.getJobConfig() == null || payload.getJobConfig().getEnableAiScan() == null
+                || payload.getJobConfig().getEnableAiScan() != 1) {
+            return;
+        }
+        Map<String, Object> aiAsset = new ConcurrentHashMap<>(asset);
+        if (result != null) {
+            aiAsset.put("assetId", result.assetId());
+            aiAsset.put("databaseType", result.databaseType());
+            aiAsset.put("columnScanInfo", result.columnScanInfo());
+            aiAsset.put("columnSamples", result.samples());
+        }
+        OfflineMysqlScanDispatchPayload aiPayload = new OfflineMysqlScanDispatchPayload();
+        aiPayload.setInstanceId(payload.getInstanceId());
+        aiPayload.setJobId(payload.getJobId());
+        aiPayload.setTaskName(payload.getTaskName());
+        aiPayload.setDispatchVersion(payload.getDispatchVersion());
+        aiPayload.setJobConfig(payload.getJobConfig());
+        aiPayload.setPolicies(payload.getPolicies());
+        aiPayload.setAssets(List.of(aiAsset));
+        rabbitTemplate.convertAndSend(
+                OfflineScanConstants.RABBIT_EXCHANGE,
+                OfflineScanConstants.RABBIT_AI_ROUTING_KEY,
+                JSON.toJSONString(aiPayload)
+        );
     }
 
     @Override

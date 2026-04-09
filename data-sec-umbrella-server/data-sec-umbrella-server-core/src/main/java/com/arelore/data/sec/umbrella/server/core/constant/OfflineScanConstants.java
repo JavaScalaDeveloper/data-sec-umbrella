@@ -12,6 +12,8 @@ public final class OfflineScanConstants {
     public static final String RABBIT_EXCHANGE = "offline.mysql.scan.exchange";
     public static final String RABBIT_QUEUE = "offline.mysql.scan.queue";
     public static final String RABBIT_ROUTING_KEY = "OFFLINE_MYSQL_SCAN";
+    public static final String RABBIT_AI_QUEUE = "offline.mysql.ai.scan.queue";
+    public static final String RABBIT_AI_ROUTING_KEY = "OFFLINE_MYSQL_AI_SCAN";
 
     public static final String REDIS_KEY_INSTANCE_PREFIX = "offline-scan:instance:";
     public static final String REDIS_KEY_LAST_INSTANCE = "offline-scan:last-instance-id";

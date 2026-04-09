@@ -4,6 +4,7 @@ import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineMysqlScanD
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -29,7 +30,7 @@ public class ClickhouseAssetScanner implements AssetScanner {
     public AssetScanResult scan(OfflineMysqlScanDispatchPayload payload, Map<String, Object> asset) {
         // 预留 Clickhouse 扫描实现
         log.info("Clickhouse scan placeholder, instanceId={}, asset={}", payload.getInstanceId(), asset);
-        return new AssetScanResult(false);
+        return new AssetScanResult(false, null, "Clickhouse", 0, List.of(), List.of(), List.of());
     }
 }
 

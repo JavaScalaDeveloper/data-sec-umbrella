@@ -5,6 +5,7 @@ import DatabaseSecurity from '../pages/DatabaseSecurity';
 import ApiSecurity from '../pages/ApiSecurity';
 import MqSecurity from '../pages/MqSecurity';
 import AdminCenter from '../pages/AdminCenter';
+import Login from '../pages/Login';
 import MySQLAsset from '../pages/data-asset/MySQLAsset';
 import ClickhouseAsset from '../pages/data-asset/ClickhouseAsset';
 
@@ -196,6 +197,10 @@ const router = createBrowserRouter([
       {
         path: 'admin-center',
         element: <AdminCenter />,
+      },
+      {
+        path: 'login',
+        element: <Login />,
       },
     ],
   },

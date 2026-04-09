@@ -5,6 +5,31 @@ import JSEncrypt from 'jsencrypt';
 // 基础URL
 const BASE_URL = 'http://localhost:8080';
 
+export type AdminAuthInfo = {
+    username: string;
+    roleCode: string;
+    superAdmin: boolean;
+    productPermissions: string[];
+};
+
+export function getAdminAuth(): AdminAuthInfo | null {
+    const raw = localStorage.getItem('adminCenterAuth');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw) as AdminAuthInfo;
+    } catch {
+        return null;
+    }
+}
+
+export function setAdminAuth(auth: AdminAuthInfo | null) {
+    if (!auth) {
+        localStorage.removeItem('adminCenterAuth');
+        return;
+    }
+    localStorage.setItem('adminCenterAuth', JSON.stringify(auth));
+}
+
 // RSA公钥，从后端获取
 let rsaPublicKey: string | null = null;
 
@@ -43,12 +68,13 @@ async function getRSAPublicKey(): Promise<string> {
 
 // 请求方法
 async function request<T>(url: string, options: RequestInit): Promise<T> {
-    const authRaw = localStorage.getItem('adminCenterAuth');
-    let auth: any = null;
-    try {
-        auth = authRaw ? JSON.parse(authRaw) : null;
-    } catch {
-        auth = null;
+    const auth = getAdminAuth();
+    const publicApi = ['/api/admin-center/account/login', '/api/admin-center/account/current'];
+    if (!auth && !publicApi.includes(url)) {
+        if (window.location.pathname !== '/login') {
+            window.location.replace('/login');
+        }
+        throw new Error('请先登录');
     }
     const response = await fetch(`${BASE_URL}${url}`, {
         ...options,
@@ -65,10 +91,22 @@ async function request<T>(url: string, options: RequestInit): Promise<T> {
     });
 
     if (!response.ok) {
+        if (response.status === 401 && window.location.pathname !== '/login') {
+            setAdminAuth(null);
+            window.location.replace('/login');
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    if (data && typeof data.code === 'number' && data.code === 401) {
+        if (window.location.pathname !== '/login') {
+            setAdminAuth(null);
+            window.location.replace('/login');
+        }
+        throw new Error(data.message || '请先登录');
+    }
+    return data;
 }
 
 // 数据库策略API
@@ -156,14 +194,18 @@ export const databasePolicyApi = {
         onDone: (result: { aiPassed: boolean; aiDetail: string }) => void,
         onError?: (err: string) => void,
     ) => {
+        const auth = getAdminAuth();
+        if (!auth) {
+            throw new Error('请先登录');
+        }
         const response = await fetch(`${BASE_URL}/api/database-policy/test-ai-rules-stream`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Admin-Username': JSON.parse(localStorage.getItem('adminCenterAuth') || '{}')?.username || '',
-                'X-Admin-Role': JSON.parse(localStorage.getItem('adminCenterAuth') || '{}')?.roleCode || '',
-                'X-Super-Admin': String(!!JSON.parse(localStorage.getItem('adminCenterAuth') || '{}')?.superAdmin),
-                'X-Product-Permissions': (JSON.parse(localStorage.getItem('adminCenterAuth') || '{}')?.productPermissions || []).join(','),
+                'X-Admin-Username': auth.username || '',
+                'X-Admin-Role': auth.roleCode || '',
+                'X-Super-Admin': String(!!auth.superAdmin),
+                'X-Product-Permissions': (auth.productPermissions || []).join(','),
             },
             body: JSON.stringify(data),
         });
@@ -676,6 +718,16 @@ export const adminCenterApi = {
         }>('/api/admin-center/account/login', {
             method: 'POST',
             body: JSON.stringify(params),
+        });
+    },
+    current: async () => {
+        return request<{
+            code: number;
+            message: string;
+            data: { success: boolean; username: string; roleCode: string; superAdmin: boolean; productPermissions: string[] };
+        }>('/api/admin-center/account/current', {
+            method: 'POST',
+            body: JSON.stringify({}),
         });
     },
     listAccounts: async (params: any) => {

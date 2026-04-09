@@ -29,6 +29,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -56,6 +57,7 @@ public class MySQLAssetScanner implements AssetScanner {
      */
     @Override
     public AssetScanResult scan(OfflineMysqlScanDispatchPayload payload, Map<String, Object> asset) {
+        Long assetId = toLong(asset.get("id"));
         String instance = str(asset.get("instance"));
         String databaseName = str(asset.get("databaseName"));
         String tableName = str(asset.get("tableName"));
@@ -66,8 +68,17 @@ public class MySQLAssetScanner implements AssetScanner {
                 : buildEmptySample(databaseName, tableName);
 
         RuleResult result = evaluatePolicies(samples, payload.getPolicies());
-        updateMysqlTableAsset(instance, databaseName, tableName, result);
-        return new AssetScanResult(result.maxLevel() > 0);
+        List<AssetScanResult.ColumnScanInfoItem> columnScanInfo = buildColumnScanInfo(samples, payload.getPolicies());
+        updateMysqlTableAsset(instance, databaseName, tableName, result, columnScanInfo);
+        return new AssetScanResult(
+                result.maxLevel() > 0,
+                assetId,
+                "MySQL",
+                result.maxLevel(),
+                new ArrayList<>(result.tags()),
+                columnScanInfo,
+                samples
+        );
     }
 
     private List<DatabasePolicyTestRulesRequest.TestData> fetchSamples(String instance, String db, String table) {
@@ -148,7 +159,60 @@ public class MySQLAssetScanner implements AssetScanner {
         }
     }
 
-    private void updateMysqlTableAsset(String instance, String db, String table, RuleResult result) {
+    private List<AssetScanResult.ColumnScanInfoItem> buildColumnScanInfo(
+            List<DatabasePolicyTestRulesRequest.TestData> samples,
+            List<OfflinePolicySnapshot> policies
+    ) {
+        if (samples == null || samples.isEmpty()) {
+            return List.of();
+        }
+        RulesChecker checker = RulesCheckerFactory.getRulesChecker("MySQL");
+        if (checker == null || policies == null || policies.isEmpty()) {
+            return samples.stream().map(s -> new AssetScanResult.ColumnScanInfoItem(
+                    s.getColumnName(),
+                    "0",
+                    List.of(),
+                    List.of(),
+                    s.getColumnValues() == null ? List.of() : s.getColumnValues()
+            )).collect(Collectors.toList());
+        }
+        List<AssetScanResult.ColumnScanInfoItem> info = new ArrayList<>();
+        for (DatabasePolicyTestRulesRequest.TestData sample : samples) {
+            int level = 0;
+            Set<String> tags = new LinkedHashSet<>();
+            List<String> sensitiveSamples = new ArrayList<>();
+            for (OfflinePolicySnapshot p : policies) {
+                DatabasePolicyTestRulesRequest req = new DatabasePolicyTestRulesRequest();
+                req.setDatabaseType("MySQL");
+                req.setRuleExpression(p.getRuleExpression());
+                req.setClassificationRules(parseClassificationRules(p.getClassificationRules()));
+                req.setTestData(List.of(sample));
+                DatabasePolicyTestRulesResponse resp = checker.checkRules(req);
+                if (resp != null && resp.isRulePassed()) {
+                    if (p.getSensitivityLevel() != null) {
+                        level = Math.max(level, p.getSensitivityLevel());
+                    }
+                    if (StringUtils.hasText(p.getPolicyCode())) {
+                        tags.add(p.getPolicyCode());
+                    }
+                    if (sample.getColumnValues() != null) {
+                        sensitiveSamples.addAll(sample.getColumnValues());
+                    }
+                }
+            }
+            info.add(new AssetScanResult.ColumnScanInfoItem(
+                    sample.getColumnName(),
+                    String.valueOf(level),
+                    new ArrayList<>(tags),
+                    sensitiveSamples.stream().distinct().collect(Collectors.toList()),
+                    sample.getColumnValues() == null ? List.of() : sample.getColumnValues()
+            ));
+        }
+        return info;
+    }
+
+    private void updateMysqlTableAsset(String instance, String db, String table, RuleResult result,
+                                       List<AssetScanResult.ColumnScanInfoItem> columnScanInfo) {
         LambdaQueryWrapper<MySQLTableInfo> qw = new LambdaQueryWrapper<>();
         qw.eq(MySQLTableInfo::getInstance, instance);
         qw.eq(MySQLTableInfo::getDatabaseName, db);
@@ -160,6 +224,7 @@ public class MySQLAssetScanner implements AssetScanner {
         }
         row.setSensitivityLevel(String.valueOf(result.maxLevel()));
         row.setSensitivityTags(String.join(",", result.tags()));
+        row.setColumnScanInfo(JSON.toJSONString(columnScanInfo == null ? List.of() : columnScanInfo));
         mySQLTableInfoService.updateById(row);
     }
 
@@ -173,6 +238,17 @@ public class MySQLAssetScanner implements AssetScanner {
 
     private String str(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private Long toLong(Object v) {
+        if (v == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(String.valueOf(v));
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private record RuleResult(int maxLevel, Set<String> tags) {

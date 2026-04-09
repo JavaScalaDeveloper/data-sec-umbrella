@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Tabs, Card, Table, Input, Button, Space, message, Modal, Descriptions, Tag, Form, Select } from 'antd';
+import { Layout, Tabs, Card, Table, Input, Button, Space, message, Modal, Descriptions, Tag, Form, Select, Tooltip } from 'antd';
 import type { TableProps } from 'antd';
 import { dataSourceApi, mysqlDatabaseApi, mysqlTableApi, mysqlAssetScanApi, databasePolicyApi } from '../../services/api';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -53,6 +53,25 @@ interface Column {
   columnDefault: string;
 }
 
+interface ColumnScanInfo {
+  columnName: string;
+  sensitivityLevel?: string;
+  sensitivityTags?: string[] | string;
+  sensitiveSamples?: string[];
+  samples?: string[];
+}
+
+interface ColumnRow extends Column {
+  scanSensitivityLevel?: string;
+  scanSensitivityTags?: string[] | string;
+  scanSensitiveSamples?: string[];
+  scanSamples?: string[];
+  aiSensitivityLevel?: string;
+  aiSensitivityTags?: string[] | string;
+  aiSensitiveSamples?: string[];
+  aiSamples?: string[];
+}
+
 // 表信息类型
 interface Table {
   id: number;
@@ -66,6 +85,8 @@ interface Table {
   aiSensitivityTags: string;
   manualReview: string | null;
   columnInfo: string;
+  columnScanInfo?: string;
+  columnAiScanInfo?: string;
   createTime: string;
   modifyTime: string;
 }
@@ -83,7 +104,7 @@ const MySQLAsset: React.FC = () => {
   // 弹窗状态
   const [detailModalVisible, setDetailModalVisible] = useState<boolean>(false);
   const [currentTable, setCurrentTable] = useState<Table | null>(null);
-  const [columns, setColumns] = useState<Column[]>([]);
+  const [columns, setColumns] = useState<ColumnRow[]>([]);
 
   // 查询参数
   const [instanceSearch, setInstanceSearch] = useState<string>('');
@@ -142,6 +163,58 @@ const MySQLAsset: React.FC = () => {
         {tags.map((item) => (
           <Tag key={item} color="blue">{policyCodeNameMap[item] || item}</Tag>
         ))}
+      </Space>
+    );
+  };
+
+  const renderTagList = (value?: string[] | string) => {
+    if (!value) {
+      return '-';
+    }
+    const tags = Array.isArray(value) ? value : String(value).split(',');
+    const normalized = tags.map((item) => String(item).trim()).filter(Boolean);
+    if (!normalized.length) {
+      return '-';
+    }
+    return (
+      <Space size={[4, 4]} wrap>
+        {normalized.map((item) => (
+          <Tag key={item} color="blue">{policyCodeNameMap[item] || item}</Tag>
+        ))}
+      </Space>
+    );
+  };
+
+  const renderSampleList = (samples?: string[]) => {
+    if (!samples || samples.length === 0) {
+      return '-';
+    }
+    const copySample = async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        message.success('已复制样例');
+      } catch (e) {
+        message.error('复制失败');
+        console.error(e);
+      }
+    };
+    const maxLength = 24;
+    return (
+      <Space size={[4, 4]} wrap>
+        {samples.map((raw, idx) => {
+          const full = String(raw ?? '');
+          const short = full.length > maxLength ? `${full.slice(0, maxLength)}...` : full;
+          return (
+            <Tooltip key={`${full}-${idx}`} title={full}>
+              <Tag
+                style={{ cursor: 'pointer', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                onClick={() => copySample(full)}
+              >
+                {short}
+              </Tag>
+            </Tooltip>
+          );
+        })}
       </Space>
     );
   };
@@ -465,10 +538,30 @@ const MySQLAsset: React.FC = () => {
   // 查看表详情
   const handleViewDetail = (record: Table) => {
     setCurrentTable(record);
-    // 解析列信息
     try {
-      const columnData = JSON.parse(record.columnInfo);
-      setColumns(columnData);
+      const columnData: Column[] = record.columnInfo ? JSON.parse(record.columnInfo) : [];
+      const scanData: ColumnScanInfo[] = record.columnScanInfo ? JSON.parse(record.columnScanInfo) : [];
+      const aiScanData: ColumnScanInfo[] = record.columnAiScanInfo ? JSON.parse(record.columnAiScanInfo) : [];
+      const scanMap = new Map<string, ColumnScanInfo>();
+      const aiMap = new Map<string, ColumnScanInfo>();
+      scanData.forEach((item) => scanMap.set(item.columnName, item));
+      aiScanData.forEach((item) => aiMap.set(item.columnName, item));
+      const merged: ColumnRow[] = columnData.map((col) => {
+        const scan = scanMap.get(col.columnName);
+        const ai = aiMap.get(col.columnName);
+        return {
+          ...col,
+          scanSensitivityLevel: scan?.sensitivityLevel,
+          scanSensitivityTags: scan?.sensitivityTags,
+          scanSensitiveSamples: scan?.sensitiveSamples,
+          scanSamples: scan?.samples,
+          aiSensitivityLevel: ai?.sensitivityLevel,
+          aiSensitivityTags: ai?.sensitivityTags,
+          aiSensitiveSamples: ai?.sensitiveSamples,
+          aiSamples: ai?.samples,
+        };
+      });
+      setColumns(merged);
     } catch (error) {
       console.error('解析列信息失败:', error);
       setColumns([]);
@@ -701,6 +794,54 @@ const MySQLAsset: React.FC = () => {
                     title: '列描述',
                     dataIndex: 'columnComment',
                     key: 'columnComment',
+                  },
+                  {
+                    title: '规则敏感等级',
+                    dataIndex: 'scanSensitivityLevel',
+                    key: 'scanSensitivityLevel',
+                    render: (value: string) => renderSensitivityLevel(value),
+                  },
+                  {
+                    title: '规则敏感标签',
+                    dataIndex: 'scanSensitivityTags',
+                    key: 'scanSensitivityTags',
+                    render: (value: string[] | string) => renderTagList(value),
+                  },
+                  {
+                    title: '规则敏感样例',
+                    dataIndex: 'scanSensitiveSamples',
+                    key: 'scanSensitiveSamples',
+                    render: (value: string[]) => renderSampleList(value),
+                  },
+                  {
+                    title: '规则样例列表',
+                    dataIndex: 'scanSamples',
+                    key: 'scanSamples',
+                    render: (value: string[]) => renderSampleList(value),
+                  },
+                  {
+                    title: 'AI敏感等级',
+                    dataIndex: 'aiSensitivityLevel',
+                    key: 'aiSensitivityLevel',
+                    render: (value: string) => renderSensitivityLevel(value),
+                  },
+                  {
+                    title: 'AI敏感标签',
+                    dataIndex: 'aiSensitivityTags',
+                    key: 'aiSensitivityTags',
+                    render: (value: string[] | string) => renderTagList(value),
+                  },
+                  {
+                    title: 'AI敏感样例',
+                    dataIndex: 'aiSensitiveSamples',
+                    key: 'aiSensitiveSamples',
+                    render: (value: string[]) => renderSampleList(value),
+                  },
+                  {
+                    title: 'AI样例列表',
+                    dataIndex: 'aiSamples',
+                    key: 'aiSamples',
+                    render: (value: string[]) => renderSampleList(value),
                   },
                 ]}
                 dataSource={columns}

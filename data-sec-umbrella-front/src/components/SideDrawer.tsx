@@ -1,7 +1,7 @@
 import React from 'react';
 import {Drawer, Card, Typography} from 'antd';
 import {DatabaseOutlined, ApiOutlined, RocketOutlined, SettingOutlined} from '@ant-design/icons';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 
 const {Title} = Typography;
 
@@ -12,6 +12,7 @@ interface SideDrawerProps {
 
 const SideDrawer: React.FC<SideDrawerProps> = ({open, onClose}) => {
     const navigate = useNavigate();
+    const location = useLocation();
 
     const menuItems = [
         {
@@ -41,6 +42,8 @@ const SideDrawer: React.FC<SideDrawerProps> = ({open, onClose}) => {
         onClose();
     };
 
+    const currentModule = menuItems.find((item) => location.pathname.startsWith(item.path)) || menuItems[0];
+
     return (<Drawer
         title="模块选择"
         placement="left"
@@ -48,6 +51,10 @@ const SideDrawer: React.FC<SideDrawerProps> = ({open, onClose}) => {
         open={open}
         size="large"
     >
+        <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px'}}>
+            {currentModule.icon}
+            <Title level={5} style={{margin: 0}}>当前模块：{currentModule.title}</Title>
+        </div>
         <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>{menuItems.map((item) => (<Card
             key={item.path}
             hoverable

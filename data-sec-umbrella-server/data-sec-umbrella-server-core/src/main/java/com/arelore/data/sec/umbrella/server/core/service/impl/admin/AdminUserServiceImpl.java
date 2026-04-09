@@ -49,6 +49,18 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
     }
 
     @Override
+    public AdminUserResponse getByUsername(String username) {
+        if (!StringUtils.hasText(username)) {
+            return null;
+        }
+        AdminUser user = this.getOne(new LambdaQueryWrapper<AdminUser>().eq(AdminUser::getUsername, username.trim()));
+        if (user == null) {
+            return null;
+        }
+        return toResponse(user);
+    }
+
+    @Override
     public IPage<AdminUserResponse> list(AdminUserQueryRequest request) {
         long current = request.getCurrent() == null ? 1L : request.getCurrent();
         long size = request.getSize() == null ? 10L : request.getSize();
@@ -168,7 +180,8 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
 
     private List<String> splitPermissions(String permissions) {
         if (!StringUtils.hasText(permissions)) {
-            return List.of();
+            // 历史数据兼容：未配置产品权限时默认给 DATABASE
+            return List.of("DATABASE");
         }
         return Arrays.stream(permissions.split(","))
                 .map(String::trim)
