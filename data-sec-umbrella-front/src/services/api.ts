@@ -472,6 +472,25 @@ export const mysqlOfflineScanJobInstanceApi = {
             body: JSON.stringify(params),
         });
     },
+    getSnapshotDetail: async (params: {
+        id: number;
+        scanKind: string;
+        uniqueKeyContains?: string;
+        sensitivityLevels?: string[];
+        sensitivityTagsContains?: string;
+    }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                tableSnapshots: any[];
+                columnSnapshots: any[];
+            };
+        }>('/api/db-asset/mysql/offline-scan-job/instance/snapshot-detail', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
 };
 
 // MySQL数据库信息API

@@ -15,6 +15,12 @@ public final class OfflineScanConstants {
     public static final String RABBIT_AI_QUEUE = "offline.mysql.ai.scan.queue";
     public static final String RABBIT_AI_ROUTING_KEY = "OFFLINE_MYSQL_AI_SCAN";
 
+    /** 扫描快照：表级 / 字段级分路由，供下游异步写入 ClickHouse 等分析库 */
+    public static final String RABBIT_SNAPSHOT_TABLE_QUEUE = "offline.scan.snapshot.table.queue";
+    public static final String RABBIT_SNAPSHOT_TABLE_ROUTING_KEY = "OFFLINE_SCAN_SNAPSHOT_TABLE";
+    public static final String RABBIT_SNAPSHOT_COLUMN_QUEUE = "offline.scan.snapshot.column.queue";
+    public static final String RABBIT_SNAPSHOT_COLUMN_ROUTING_KEY = "OFFLINE_SCAN_SNAPSHOT_COLUMN";
+
     public static final String REDIS_KEY_INSTANCE_PREFIX = "offline-scan:instance:";
     public static final String REDIS_KEY_LAST_INSTANCE = "offline-scan:last-instance-id";
     public static final String REDIS_KEY_INSTANCE_VERSION_SUFFIX = ":version";

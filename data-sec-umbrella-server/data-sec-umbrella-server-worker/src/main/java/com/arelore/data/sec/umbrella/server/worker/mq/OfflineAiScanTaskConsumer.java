@@ -2,12 +2,12 @@ package com.arelore.data.sec.umbrella.server.worker.mq;
 
 import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanConstants;
-import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineMysqlScanDispatchPayload;
+import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.worker.executor.TaskWorkerExecutorManager;
-import com.arelore.data.sec.umbrella.server.worker.task.AiTaskWorker;
+import com.arelore.data.sec.umbrella.server.worker.task.OfflineScanTaskProcessor;
 import com.rabbitmq.client.Channel;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
@@ -25,23 +25,30 @@ import java.util.concurrent.Future;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class OfflineAiScanTaskConsumer {
 
-    private final AiTaskWorker aiTaskWorker;
+    private final OfflineScanTaskProcessor offlineAiScanTaskProcessor;
     private final TaskWorkerExecutorManager executorManager;
     private final StringRedisTemplate stringRedisTemplate;
+
+    public OfflineAiScanTaskConsumer(@Qualifier("offlineAiScanTaskProcessor") OfflineScanTaskProcessor offlineAiScanTaskProcessor,
+                                     TaskWorkerExecutorManager executorManager,
+                                     StringRedisTemplate stringRedisTemplate) {
+        this.offlineAiScanTaskProcessor = offlineAiScanTaskProcessor;
+        this.executorManager = executorManager;
+        this.stringRedisTemplate = stringRedisTemplate;
+    }
 
     @RabbitListener(queues = OfflineScanConstants.RABBIT_AI_QUEUE)
     public void onMessage(Message message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws Exception {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
-        OfflineMysqlScanDispatchPayload payload = JSON.parseObject(body, OfflineMysqlScanDispatchPayload.class);
+        OfflineDatabaseScanDispatchPayload payload = JSON.parseObject(body, OfflineDatabaseScanDispatchPayload.class);
         if (!isMessageVersionValid(payload)) {
             channel.basicAck(deliveryTag, false);
             return;
         }
         try {
-            Future<?> f = executorManager.submit(() -> aiTaskWorker.process(payload));
+            Future<?> f = executorManager.submit(() -> offlineAiScanTaskProcessor.process(payload));
             f.get();
             channel.basicAck(deliveryTag, false);
         } catch (Exception ex) {
@@ -50,7 +57,7 @@ public class OfflineAiScanTaskConsumer {
         }
     }
 
-    private boolean isMessageVersionValid(OfflineMysqlScanDispatchPayload payload) {
+    private boolean isMessageVersionValid(OfflineDatabaseScanDispatchPayload payload) {
         if (payload == null || payload.getInstanceId() == null || payload.getDispatchVersion() == null) {
             return false;
         }

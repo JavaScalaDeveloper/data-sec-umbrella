@@ -3,7 +3,7 @@ package com.arelore.data.sec.umbrella.server.manager.task;
 import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanConstants;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineJobConfigSnapshot;
-import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineMysqlScanDispatchPayload;
+import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflinePolicySnapshot;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyResponse;
 import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJob;
@@ -133,7 +133,8 @@ public class TaskManagerImpl implements TaskManager {
                 break;
             }
             for (Map<String, Object> asset : page.getRecords()) {
-                OfflineMysqlScanDispatchPayload payload = new OfflineMysqlScanDispatchPayload();
+                OfflineDatabaseScanDispatchPayload payload = new OfflineDatabaseScanDispatchPayload();
+                payload.setEngine("MySQL");
                 payload.setInstanceId(inst.getId());
                 payload.setJobId(job.getId());
                 payload.setTaskName(job.getTaskName());
@@ -159,7 +160,8 @@ public class TaskManagerImpl implements TaskManager {
         }
         inst.setExtendInfo(JSON.toJSONString(Map.of(
                 "exchange", OfflineScanConstants.RABBIT_EXCHANGE,
-                "routingKey", OfflineScanConstants.RABBIT_ROUTING_KEY)));
+                "routingKey", OfflineScanConstants.RABBIT_ROUTING_KEY,
+                "assetEngine", "MySQL")));
         jobInstanceService.updateById(inst);
         log.info("Dispatched offline scan instance {} job {}", inst.getId(), job.getId());
     }

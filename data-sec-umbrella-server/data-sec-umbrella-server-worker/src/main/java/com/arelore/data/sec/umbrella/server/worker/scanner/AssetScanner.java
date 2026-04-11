@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.worker.scanner;
 
-import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineMysqlScanDispatchPayload;
+import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 
 import java.util.Map;
 
@@ -24,6 +24,6 @@ public interface AssetScanner {
      * @param asset 单个资产快照
      * @return 扫描结果（是否敏感）
      */
-    AssetScanResult scan(OfflineMysqlScanDispatchPayload payload, Map<String, Object> asset);
+    AssetScanResult scan(OfflineDatabaseScanDispatchPayload payload, Map<String, Object> asset);
 }
 

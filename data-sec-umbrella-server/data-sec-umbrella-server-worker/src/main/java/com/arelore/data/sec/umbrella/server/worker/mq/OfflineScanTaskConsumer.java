@@ -2,12 +2,12 @@ package com.arelore.data.sec.umbrella.server.worker.mq;
 
 import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanConstants;
-import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineMysqlScanDispatchPayload;
+import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.worker.executor.TaskWorkerExecutorManager;
-import com.arelore.data.sec.umbrella.server.worker.task.TaskWorker;
+import com.arelore.data.sec.umbrella.server.worker.task.OfflineScanTaskProcessor;
 import com.rabbitmq.client.Channel;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
@@ -20,7 +20,6 @@ import java.util.concurrent.Future;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 /**
  * RabbitMQ 离线扫描消费者。
  *
@@ -28,9 +27,17 @@ import java.util.concurrent.Future;
  */
 public class OfflineScanTaskConsumer {
 
-    private final TaskWorker taskWorker;
+    private final OfflineScanTaskProcessor offlineRuleScanTaskProcessor;
     private final TaskWorkerExecutorManager executorManager;
     private final StringRedisTemplate stringRedisTemplate;
+
+    public OfflineScanTaskConsumer(@Qualifier("offlineRuleScanTaskProcessor") OfflineScanTaskProcessor offlineRuleScanTaskProcessor,
+                                   TaskWorkerExecutorManager executorManager,
+                                   StringRedisTemplate stringRedisTemplate) {
+        this.offlineRuleScanTaskProcessor = offlineRuleScanTaskProcessor;
+        this.executorManager = executorManager;
+        this.stringRedisTemplate = stringRedisTemplate;
+    }
 
     @RabbitListener(queues = OfflineScanConstants.RABBIT_QUEUE)
     /**
@@ -43,14 +50,14 @@ public class OfflineScanTaskConsumer {
      */
     public void onMessage(Message message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws Exception {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
-        OfflineMysqlScanDispatchPayload payload = JSON.parseObject(body, OfflineMysqlScanDispatchPayload.class);
+        OfflineDatabaseScanDispatchPayload payload = JSON.parseObject(body, OfflineDatabaseScanDispatchPayload.class);
         if (!isMessageVersionValid(payload)) {
             // 版本不一致：说明是旧任务消息，直接 ACK 丢弃
             channel.basicAck(deliveryTag, false);
             return;
         }
         try {
-            Future<?> f = executorManager.submit(() -> taskWorker.process(payload));
+            Future<?> f = executorManager.submit(() -> offlineRuleScanTaskProcessor.process(payload));
             f.get();
             channel.basicAck(deliveryTag, false);
         } catch (Exception ex) {
@@ -59,7 +66,7 @@ public class OfflineScanTaskConsumer {
         }
     }
 
-    private boolean isMessageVersionValid(OfflineMysqlScanDispatchPayload payload) {
+    private boolean isMessageVersionValid(OfflineDatabaseScanDispatchPayload payload) {
         if (payload == null || payload.getInstanceId() == null || payload.getDispatchVersion() == null) {
             return false;
         }

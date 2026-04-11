@@ -2,7 +2,7 @@ package com.arelore.data.sec.umbrella.server.worker.scanner;
 
 import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.constant.RSAKeyConstants;
-import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineMysqlScanDispatchPayload;
+import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflinePolicySnapshot;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
@@ -56,7 +56,7 @@ public class MySQLAssetScanner implements AssetScanner {
      * {@inheritDoc}
      */
     @Override
-    public AssetScanResult scan(OfflineMysqlScanDispatchPayload payload, Map<String, Object> asset) {
+    public AssetScanResult scan(OfflineDatabaseScanDispatchPayload payload, Map<String, Object> asset) {
         Long assetId = toLong(asset.get("id"));
         String instance = str(asset.get("instance"));
         String databaseName = str(asset.get("databaseName"));

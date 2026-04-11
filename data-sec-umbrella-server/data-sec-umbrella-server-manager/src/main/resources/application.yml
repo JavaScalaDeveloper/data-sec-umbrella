@@ -61,6 +61,17 @@ mybatis-plus:
 offline-scan:
   dispatch-interval-ms: 5000
 
+# ClickHouse：快照查询（管理端「实例详情」）；写入由 MQ 消费者落库，表结构见 scripts/clickhouse/
+clickhouse:
+  enabled: ${CLICKHOUSE_ENABLED:true}
+  # compress=0：避免 clickhouse-jdbc HTTP 客户端缺少 LZ4 原生库时报 LZ4 is not supported（也可用 pom 中 lz4-java 开启压缩）
+  jdbc-url: jdbc:ch://${CLICKHOUSE_HOST:book-n95}:${CLICKHOUSE_PORT:8123}/${CLICKHOUSE_DATABASE:data_sec_umbrella}?compress=0
+  username: ${CLICKHOUSE_USER:admin}
+  password: ${CLICKHOUSE_PASSWORD:123456}
+  snapshot-table: ${CLICKHOUSE_SNAPSHOT_TABLE:data_sec_umbrella.offline_scan_snapshot_table}
+  snapshot-column: ${CLICKHOUSE_SNAPSHOT_COLUMN:data_sec_umbrella.offline_scan_snapshot_column}
+  query-limit: ${CLICKHOUSE_SNAPSHOT_QUERY_LIMIT:5000}
+
 llm:
   ollama:
     enabled: ${LLM_OLLAMA_ENABLED:true}

@@ -2,10 +2,12 @@ package com.arelore.data.sec.umbrella.server.manager.controller.job;
 
 import com.arelore.data.sec.umbrella.server.core.common.Result;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobIdRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.OfflineScanInstanceSnapshotDetailRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobInstanceQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobSaveRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DbAssetMysqlScanOfflineJobResponse;
+import com.arelore.data.sec.umbrella.server.core.dto.response.OfflineScanSnapshotDetailResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
@@ -13,6 +15,8 @@ import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOffline
 import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
 import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
 import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
+import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotAssetEngineResolver;
+import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotClickHouseQueryService;
 import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -35,14 +39,17 @@ public class DbAssetMysqlScanOfflineJobController {
     private final DbAssetMysqlScanOfflineJobService offlineScanJobService;
     private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
     private final TaskManager taskManager;
+    private final OfflineScanSnapshotClickHouseQueryService offlineScanSnapshotClickHouseQueryService;
 
     @Autowired
     public DbAssetMysqlScanOfflineJobController(DbAssetMysqlScanOfflineJobService offlineScanJobService,
                                                 DbAssetMysqlScanOfflineJobInstanceService jobInstanceService,
-                                                TaskManager taskManager) {
+                                                TaskManager taskManager,
+                                                OfflineScanSnapshotClickHouseQueryService offlineScanSnapshotClickHouseQueryService) {
         this.offlineScanJobService = offlineScanJobService;
         this.jobInstanceService = jobInstanceService;
         this.taskManager = taskManager;
+        this.offlineScanSnapshotClickHouseQueryService = offlineScanSnapshotClickHouseQueryService;
     }
 
     @PostMapping("/list")
@@ -72,6 +79,40 @@ public class DbAssetMysqlScanOfflineJobController {
                 pageResult.getCurrent(),
                 pageResult.getSize()
         ));
+    }
+
+    /**
+     * 按任务实例 ID 查询 ClickHouse 中已落库的表级 / 字段级敏感快照（需 MQ 消费者写入且配置 clickhouse.*）。
+     */
+    @PostMapping("/instance/snapshot-detail")
+    public Result<OfflineScanSnapshotDetailResponse> instanceSnapshotDetail(
+            @RequestBody OfflineScanInstanceSnapshotDetailRequest request) {
+        if (request.getId() == null) {
+            return Result.error("id不能为空");
+        }
+        if (!StringUtils.hasText(request.getScanKind())) {
+            return Result.error("scanKind不能为空，请指定 RULE 或 AI");
+        }
+        String scanKind = request.getScanKind().trim().toUpperCase();
+        if (!"RULE".equals(scanKind) && !"AI".equals(scanKind)) {
+            return Result.error("scanKind 仅支持 RULE 或 AI");
+        }
+        DbAssetMysqlScanOfflineJobInstance inst = jobInstanceService.getById(request.getId());
+        if (inst == null) {
+            return Result.error("实例不存在");
+        }
+        String engine = OfflineScanSnapshotAssetEngineResolver.resolve(inst);
+        try {
+            return Result.success(offlineScanSnapshotClickHouseQueryService.query(
+                    request.getId(),
+                    engine,
+                    scanKind,
+                    request.getUniqueKeyContains(),
+                    request.getSensitivityLevels(),
+                    request.getSensitivityTagsContains()));
+        } catch (IllegalStateException ex) {
+            return Result.error(ex.getMessage());
+        }
     }
 
     @PostMapping("/getById")
