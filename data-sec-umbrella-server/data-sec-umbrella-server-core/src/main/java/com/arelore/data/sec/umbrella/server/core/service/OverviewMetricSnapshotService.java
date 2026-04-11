@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.service;
 
-import com.arelore.data.sec.umbrella.server.core.entity.OverviewMetricSnapshot;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.OverviewMetricSnapshot;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;

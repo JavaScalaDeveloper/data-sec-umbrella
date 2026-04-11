@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.service.impl.overview;
 
-import com.arelore.data.sec.umbrella.server.core.entity.OverviewMetricSnapshot;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.OverviewMetricSnapshot;
 import com.arelore.data.sec.umbrella.server.core.mapper.OverviewMetricSnapshotMapper;
 import com.arelore.data.sec.umbrella.server.core.service.OverviewMetricSnapshotService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;

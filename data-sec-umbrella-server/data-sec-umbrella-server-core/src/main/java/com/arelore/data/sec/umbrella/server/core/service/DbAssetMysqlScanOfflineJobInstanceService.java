@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.service;
 
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;

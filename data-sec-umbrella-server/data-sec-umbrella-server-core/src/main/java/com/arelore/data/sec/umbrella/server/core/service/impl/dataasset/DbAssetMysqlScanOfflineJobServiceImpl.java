@@ -5,8 +5,8 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOff
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobSaveRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DbAssetMysqlScanOfflineJobResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJob;
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
 import com.arelore.data.sec.umbrella.server.core.mapper.DbAssetMysqlScanOfflineJobMapper;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;

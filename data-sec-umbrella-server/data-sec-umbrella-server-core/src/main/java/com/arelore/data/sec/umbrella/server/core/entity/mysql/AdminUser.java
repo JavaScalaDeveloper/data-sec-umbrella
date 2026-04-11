@@ -1,4 +1,4 @@
-package com.arelore.data.sec.umbrella.server.core.entity;
+package com.arelore.data.sec.umbrella.server.core.entity.mysql;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

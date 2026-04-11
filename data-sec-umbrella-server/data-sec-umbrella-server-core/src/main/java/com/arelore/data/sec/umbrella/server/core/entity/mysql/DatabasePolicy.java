@@ -1,22 +1,13 @@
-package com.arelore.data.sec.umbrella.server.core.entity;
+package com.arelore.data.sec.umbrella.server.core.entity.mysql;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
-
 import java.time.LocalDateTime;
 import java.util.Date;
 
-/**
- * 消息策略实体类
- */
 @Data
-@TableName("message_policy")
-public class MessagePolicy {
-
+@TableName("database_policy")
+public class DatabasePolicy {
     /**
      * 主键ID
      */
@@ -36,55 +27,55 @@ public class MessagePolicy {
     private Date modifyTime;
 
     /**
-     * 创建者
+     * 创建人
      */
     @TableField("creator")
     private String creator;
 
     /**
-     * 修改者
+     * 修改人
      */
     @TableField("modifier")
     private String modifier;
 
     /**
-     * 策略编码
+     * 策略code
      */
     @TableField("policy_code")
     private String policyCode;
 
     /**
-     * 策略名称
+     * 策略名
      */
     @TableField("policy_name")
     private String policyName;
 
     /**
-     * 策略描述
+     * 描述
      */
     @TableField("description")
     private String description;
 
     /**
-     * 敏感等级（1-低，2-中，3-高，4-极高）
+     * 敏感等级 1-5，越高代表越敏感
      */
     @TableField("sensitivity_level")
     private Integer sensitivityLevel;
 
     /**
-     * 隐藏样例（1-是，0-否）
+     * 隐藏样例 0-否 1-是
      */
     @TableField("hide_example")
     private Integer hideExample;
 
     /**
-     * 分类规则（JSON格式）
+     * 分类规则
      */
     @TableField("classification_rules")
     private String classificationRules;
 
     /**
-     * 规则表达式（JSON格式）
+     * 规则表达式
      */
     @TableField("rule_expression")
     private String ruleExpression;
@@ -94,4 +85,10 @@ public class MessagePolicy {
      */
     @TableField("ai_rule")
     private String aiRule;
+
+    /**
+     * 数据库类型
+     */
+    @TableField("database_type")
+    private String databaseType;
 }

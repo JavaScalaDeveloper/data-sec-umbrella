@@ -1,6 +1,9 @@
 package com.arelore.data.sec.umbrella.server.core.dto.response;
 
+import com.arelore.data.sec.umbrella.server.core.entity.clickhouse.OfflineScanSnapshotColumnEntity;
+import com.arelore.data.sec.umbrella.server.core.entity.clickhouse.OfflineScanSnapshotTableEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
@@ -10,26 +13,26 @@ import java.util.List;
 @Data
 public class OfflineScanSnapshotDetailResponse {
 
-    private List<OfflineScanSnapshotRow> tableSnapshots;
-    private List<OfflineScanSnapshotRow> columnSnapshots;
+    private List<OfflineScanSnapshotTableRow> tableSnapshots;
+    private List<OfflineScanSnapshotColumnRow> columnSnapshots;
+    /** 表级快照总条数（与筛选条件一致） */
+    private Long tableTotal;
+    /** 字段级快照总条数（与筛选条件一致） */
+    private Long columnTotal;
 
+    /**
+     * 表级快照行（对应 {@code offline_scan_snapshot_table}）。
+     */
     @Data
-    public static class OfflineScanSnapshotRow {
-        private String eventTime;
-        private Long instanceId;
-        private Long jobId;
-        private String taskName;
-        private Long dispatchVersion;
-        private String scanKind;
-        private String engine;
-        private String uniqueKey;
-        private String sensitivityLevel;
-        private List<String> sensitivityTags;
-        /** 表级：列详情 JSON 数组（与 CH column_details 一致） */
-        private String columnDetails;
-        /** 字段级：样例列表 */
-        private List<String> samples;
-        /** 字段级：敏感样例列表 */
-        private List<String> sensitiveSamples;
+    @EqualsAndHashCode(callSuper = true)
+    public static class OfflineScanSnapshotTableRow extends OfflineScanSnapshotTableEntity {
+    }
+
+    /**
+     * 字段级快照行（对应 {@code offline_scan_snapshot_column}）。
+     */
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    public static class OfflineScanSnapshotColumnRow extends OfflineScanSnapshotColumnEntity {
     }
 }

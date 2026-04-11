@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.mapper;
 
-import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**

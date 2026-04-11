@@ -22,6 +22,20 @@ const STATUS_COLOR: Record<string, string> = {
     failed: 'error',
 };
 
+/** 多个样例换行展示（与 Tooltip 全文一致） */
+const renderMultilineSamples = (arr?: string[]) => {
+    const list = arr || [];
+    if (!list.length) {
+        return '-';
+    }
+    const text = list.join('\n');
+    return (
+        <Tooltip title={<span style={{whiteSpace: 'pre-line'}}>{text}</span>}>
+            <span style={{whiteSpace: 'pre-line', wordBreak: 'break-word', cursor: 'default'}}>{text}</span>
+        </Tooltip>
+    );
+};
+
 const formatProgress = (done: number, total: number) => {
     if (total <= 0) {
         return `100% (${done}/${total})`;
@@ -86,6 +100,13 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
     const [snapshotTags, setSnapshotTags] = useState('');
     const [tableSnapshots, setTableSnapshots] = useState<any[]>([]);
     const [columnSnapshots, setColumnSnapshots] = useState<any[]>([]);
+    const [snapshotTablePage, setSnapshotTablePage] = useState(1);
+    const [snapshotTablePageSize, setSnapshotTablePageSize] = useState(10);
+    const [snapshotColumnPage, setSnapshotColumnPage] = useState(1);
+    const [snapshotColumnPageSize, setSnapshotColumnPageSize] = useState(10);
+    const [snapshotTableTotal, setSnapshotTableTotal] = useState(0);
+    const [snapshotColumnTotal, setSnapshotColumnTotal] = useState(0);
+    const [snapshotRequestKey, setSnapshotRequestKey] = useState(0);
     const [columnDetailModalOpen, setColumnDetailModalOpen] = useState(false);
     const [columnDetailModalUniqueKey, setColumnDetailModalUniqueKey] = useState('');
     const [columnDetailRows, setColumnDetailRows] = useState<SnapshotColumnDetailRow[]>([]);
@@ -136,8 +157,6 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         }
         const f = snapshotFilterRef.current;
         setSnapshotLoading(true);
-        setTableSnapshots([]);
-        setColumnSnapshots([]);
         try {
             const res = await mysqlOfflineScanJobInstanceApi.getSnapshotDetail({
                 id: snapshotInstanceId,
@@ -145,10 +164,16 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
                 uniqueKeyContains: f.uniqueKey.trim() || undefined,
                 sensitivityLevels: f.levels.length ? f.levels : undefined,
                 sensitivityTagsContains: f.tags.trim() || undefined,
+                tableCurrent: snapshotTablePage,
+                tableSize: snapshotTablePageSize,
+                columnCurrent: snapshotColumnPage,
+                columnSize: snapshotColumnPageSize,
             });
             if (res.code === 200 && res.data) {
                 setTableSnapshots(res.data.tableSnapshots || []);
                 setColumnSnapshots(res.data.columnSnapshots || []);
+                setSnapshotTableTotal(Number(res.data.tableTotal) || 0);
+                setSnapshotColumnTotal(Number(res.data.columnTotal) || 0);
             } else {
                 message.error(res.message || '加载快照失败');
             }
@@ -158,7 +183,15 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         } finally {
             setSnapshotLoading(false);
         }
-    }, [snapshotInstanceId, snapshotScanKind]);
+    }, [
+        snapshotInstanceId,
+        snapshotScanKind,
+        snapshotTablePage,
+        snapshotTablePageSize,
+        snapshotColumnPage,
+        snapshotColumnPageSize,
+        snapshotRequestKey,
+    ]);
 
     const openSnapshotDetail = (instanceId: number) => {
         setSnapshotInstanceId(instanceId);
@@ -166,6 +199,10 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         setSnapshotUniqueKey('');
         setSnapshotLevels([]);
         setSnapshotTags('');
+        setSnapshotTablePage(1);
+        setSnapshotColumnPage(1);
+        setSnapshotTablePageSize(10);
+        setSnapshotColumnPageSize(10);
         setSnapshotOpen(true);
     };
 
@@ -174,7 +211,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
             return;
         }
         void fetchSnapshots();
-    }, [snapshotOpen, snapshotInstanceId, snapshotScanKind, fetchSnapshots]);
+    }, [snapshotOpen, snapshotInstanceId, fetchSnapshots]);
 
     useEffect(() => {
         if (!snapshotOpen) {
@@ -221,31 +258,15 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
             title: '样例',
             dataIndex: 'samples',
             key: 'samples',
-            width: 200,
-            ellipsis: true,
-            render: (_: unknown, r) => {
-                const text = (r.samples || []).join(', ') || '-';
-                return (
-                    <Tooltip title={text}>
-                        <span style={{cursor: 'default'}}>{text}</span>
-                    </Tooltip>
-                );
-            },
+            width: 220,
+            render: (_: unknown, r) => renderMultilineSamples(r.samples),
         },
         {
             title: '敏感样例',
             dataIndex: 'sensitiveSamples',
             key: 'sensitiveSamples',
-            width: 200,
-            ellipsis: true,
-            render: (_: unknown, r) => {
-                const text = (r.sensitiveSamples || []).join(', ') || '-';
-                return (
-                    <Tooltip title={text}>
-                        <span style={{cursor: 'default'}}>{text}</span>
-                    </Tooltip>
-                );
-            },
+            width: 220,
+            render: (_: unknown, r) => renderMultilineSamples(r.sensitiveSamples),
         },
     ];
 
@@ -263,7 +284,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
     };
 
     const snapshotTableColumns: ColumnsType<any> = [
-        {title: '事件时间', dataIndex: 'eventTime', width: 170},
+        {title: '事件时间', dataIndex: 'eventTime', width: 100},
         uniqueKeyColumn,
         {title: '敏感等级', dataIndex: 'sensitivityLevel', width: 100},
         {
@@ -275,7 +296,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         {
             title: '列详情',
             dataIndex: 'columnDetails',
-            width: 220,
+            width: 80,
             ellipsis: true,
             render: (v: string, r: any) =>
                 !v || v === '[]' ? (
@@ -286,9 +307,9 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
                     </Button>
                 ),
         },
-        {title: '扫描类型', dataIndex: 'scanKind', width: 90},
-        {title: '任务名', dataIndex: 'taskName', width: 160, ellipsis: true},
-        {title: 'Job ID', dataIndex: 'jobId', width: 90},
+        // {title: '扫描类型', dataIndex: 'scanKind', width: 90},
+        // {title: '任务名', dataIndex: 'taskName', width: 160, ellipsis: true},
+        // {title: 'Job ID', dataIndex: 'jobId', width: 90},
     ];
 
     const snapshotColumnColumns: ColumnsType<any> = [
@@ -304,32 +325,14 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         {
             title: '样例',
             dataIndex: 'samples',
-            width: 200,
-            ellipsis: true,
-            render: (_: unknown, r: any) => {
-                const arr = r.samples as string[] | undefined;
-                const text = (arr || []).join(', ') || '-';
-                return (
-                    <Tooltip title={text}>
-                        <span style={{cursor: 'default'}}>{text}</span>
-                    </Tooltip>
-                );
-            },
+            width: 220,
+            render: (_: unknown, r: any) => renderMultilineSamples(r.samples as string[] | undefined),
         },
         {
             title: '敏感样例',
             dataIndex: 'sensitiveSamples',
-            width: 200,
-            ellipsis: true,
-            render: (_: unknown, r: any) => {
-                const arr = r.sensitiveSamples as string[] | undefined;
-                const text = (arr || []).join(', ') || '-';
-                return (
-                    <Tooltip title={text}>
-                        <span style={{cursor: 'default'}}>{text}</span>
-                    </Tooltip>
-                );
-            },
+            width: 220,
+            render: (_: unknown, r: any) => renderMultilineSamples(r.sensitiveSamples as string[] | undefined),
         },
         {title: '扫描类型', dataIndex: 'scanKind', width: 90},
         {title: '任务名', dataIndex: 'taskName', width: 160, ellipsis: true},
@@ -429,7 +432,11 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
                         <Select
                             style={{width: 140}}
                             value={snapshotScanKind}
-                            onChange={(v) => setSnapshotScanKind(v as 'RULE' | 'AI')}
+                            onChange={(v) => {
+                                setSnapshotScanKind(v as 'RULE' | 'AI');
+                                setSnapshotTablePage(1);
+                                setSnapshotColumnPage(1);
+                            }}
                             options={[
                                 {value: 'RULE', label: 'RULE（规则）'},
                                 {value: 'AI', label: 'AI'},
@@ -464,7 +471,15 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
                             value={snapshotTags}
                             onChange={(e) => setSnapshotTags(e.target.value)}
                         />
-                        <Button type="primary" loading={snapshotLoading} onClick={() => void fetchSnapshots()}>
+                        <Button
+                            type="primary"
+                            loading={snapshotLoading}
+                            onClick={() => {
+                                setSnapshotTablePage(1);
+                                setSnapshotColumnPage(1);
+                                setSnapshotRequestKey((k) => k + 1);
+                            }}
+                        >
                             刷新
                         </Button>
                     </Space>
@@ -479,12 +494,22 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
                             label: '表级快照',
                             children: (
                                 <Table
-                                    rowKey={(r, i) => `tbl-${i}-${r.eventTime}-${r.uniqueKey}-${r.scanKind}`}
+                                    rowKey={(r) => `tbl-${r.eventTime}-${r.uniqueKey}-${r.jobId}-${r.dispatchVersion}`}
                                     loading={snapshotLoading}
                                     columns={snapshotTableColumns}
                                     dataSource={tableSnapshots}
                                     scroll={{x: 1500}}
-                                    pagination={{pageSize: 10, showTotal: (t) => `共 ${t} 条`}}
+                                    pagination={{
+                                        current: snapshotTablePage,
+                                        pageSize: snapshotTablePageSize,
+                                        total: snapshotTableTotal,
+                                        showSizeChanger: true,
+                                        showTotal: (t) => `共 ${t} 条`,
+                                        onChange: (p, ps) => {
+                                            setSnapshotTablePage(p);
+                                            setSnapshotTablePageSize(ps || 10);
+                                        },
+                                    }}
                                 />
                             ),
                         },
@@ -493,12 +518,22 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
                             label: '字段级快照',
                             children: (
                                 <Table
-                                    rowKey={(r, i) => `col-${i}-${r.eventTime}-${r.uniqueKey}-${r.scanKind}`}
+                                    rowKey={(r) => `col-${r.eventTime}-${r.uniqueKey}-${r.jobId}-${r.dispatchVersion}`}
                                     loading={snapshotLoading}
                                     columns={snapshotColumnColumns}
                                     dataSource={columnSnapshots}
                                     scroll={{x: 1500}}
-                                    pagination={{pageSize: 10, showTotal: (t) => `共 ${t} 条`}}
+                                    pagination={{
+                                        current: snapshotColumnPage,
+                                        pageSize: snapshotColumnPageSize,
+                                        total: snapshotColumnTotal,
+                                        showSizeChanger: true,
+                                        showTotal: (t) => `共 ${t} 条`,
+                                        onChange: (p, ps) => {
+                                            setSnapshotColumnPage(p);
+                                            setSnapshotColumnPageSize(ps || 10);
+                                        },
+                                    }}
                                 />
                             ),
                         },

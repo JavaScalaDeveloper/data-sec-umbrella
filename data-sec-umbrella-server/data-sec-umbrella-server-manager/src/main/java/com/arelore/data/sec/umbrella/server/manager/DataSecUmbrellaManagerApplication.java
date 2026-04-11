@@ -9,7 +9,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.arelore.data.sec.umbrella.server.manager",
         "com.arelore.data.sec.umbrella.server.core"
 })
-@MapperScan("com.arelore.data.sec.umbrella.server.core.mapper")
+@MapperScan(
+        basePackages = "com.arelore.data.sec.umbrella.server.core.mapper",
+        sqlSessionFactoryRef = "sqlSessionFactory"
+)
 @EnableScheduling
 public class DataSecUmbrellaManagerApplication {
 

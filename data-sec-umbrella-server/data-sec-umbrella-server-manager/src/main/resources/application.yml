@@ -46,7 +46,7 @@ spring:
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: com.arelore.data.sec.umbrella.server.core.entity
+  type-aliases-package: com.arelore.data.sec.umbrella.server.core.entity.mysql,com.arelore.data.sec.umbrella.server.core.entity.clickhouse
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
@@ -68,9 +68,9 @@ clickhouse:
   jdbc-url: jdbc:ch://${CLICKHOUSE_HOST:book-n95}:${CLICKHOUSE_PORT:8123}/${CLICKHOUSE_DATABASE:data_sec_umbrella}?compress=0
   username: ${CLICKHOUSE_USER:admin}
   password: ${CLICKHOUSE_PASSWORD:123456}
+  # 表名由实体 OfflineScanSnapshot*Entity 固定；JDBC URL 中的库名须与 ClickHouse 库一致（如 data_sec_umbrella）
   snapshot-table: ${CLICKHOUSE_SNAPSHOT_TABLE:data_sec_umbrella.offline_scan_snapshot_table}
   snapshot-column: ${CLICKHOUSE_SNAPSHOT_COLUMN:data_sec_umbrella.offline_scan_snapshot_column}
-  query-limit: ${CLICKHOUSE_SNAPSHOT_QUERY_LIMIT:5000}
 
 llm:
   ollama:

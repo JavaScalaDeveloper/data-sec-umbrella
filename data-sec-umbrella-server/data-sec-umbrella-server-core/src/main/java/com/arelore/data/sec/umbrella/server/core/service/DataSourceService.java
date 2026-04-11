@@ -2,7 +2,7 @@ package com.arelore.data.sec.umbrella.server.core.service;
 
 import com.arelore.data.sec.umbrella.server.core.dto.request.DataSourceRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DataSourceResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.DataSource;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 

@@ -478,6 +478,10 @@ export const mysqlOfflineScanJobInstanceApi = {
         uniqueKeyContains?: string;
         sensitivityLevels?: string[];
         sensitivityTagsContains?: string;
+        tableCurrent?: number;
+        tableSize?: number;
+        columnCurrent?: number;
+        columnSize?: number;
     }) => {
         return request<{
             code: number;
@@ -485,6 +489,8 @@ export const mysqlOfflineScanJobInstanceApi = {
             data: {
                 tableSnapshots: any[];
                 columnSnapshots: any[];
+                tableTotal?: number;
+                columnTotal?: number;
             };
         }>('/api/db-asset/mysql/offline-scan-job/instance/snapshot-detail', {
             method: 'POST',

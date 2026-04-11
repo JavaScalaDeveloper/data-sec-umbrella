@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.strategy.impl;
 
-import com.arelore.data.sec.umbrella.server.core.entity.DataSource;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
 import com.arelore.data.sec.umbrella.server.core.strategy.DatabaseConnectionStrategy;
 
 import java.sql.Connection;

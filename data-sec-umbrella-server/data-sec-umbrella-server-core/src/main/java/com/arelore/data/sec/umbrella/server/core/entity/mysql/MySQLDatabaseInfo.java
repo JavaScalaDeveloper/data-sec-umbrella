@@ -1,4 +1,4 @@
-package com.arelore.data.sec.umbrella.server.core.entity;
+package com.arelore.data.sec.umbrella.server.core.entity.mysql;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -9,11 +9,11 @@ import lombok.Data;
 import java.util.Date;
 
 /**
- * MySQL表信息实体类
+ * MySQL数据库信息实体类
  */
 @Data
-@TableName("db_asset_mysql_table_info")
-public class MySQLTableInfo {
+@TableName("db_asset_mysql_database_info")
+public class MySQLDatabaseInfo {
 
     /**
      * 主键ID
@@ -48,13 +48,7 @@ public class MySQLTableInfo {
     private String databaseName;
 
     /**
-     * 表名
-     */
-    @TableField("table_name")
-    private String tableName;
-
-    /**
-     * 表描述
+     * 数据库描述
      */
     private String description;
 
@@ -87,22 +81,4 @@ public class MySQLTableInfo {
      */
     @TableField("manual_sensitive")
     private String manualReview;
-
-    /**
-     * 列信息（JSON格式）
-     */
-    @TableField("column_info")
-    private String columnInfo;
-
-    /**
-     * 列扫描信息（JSON格式）
-     */
-    @TableField("column_scan_info")
-    private String columnScanInfo;
-
-    /**
-     * 列AI扫描信息（JSON格式）
-     */
-    @TableField("column_ai_scan_info")
-    private String columnAiScanInfo;
 }

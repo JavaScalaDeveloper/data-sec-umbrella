@@ -3,7 +3,7 @@ package com.arelore.data.sec.umbrella.server.core.service.impl.datasource;
 import com.arelore.data.sec.umbrella.server.core.constant.RSAKeyConstants;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DataSourceRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DataSourceResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.DataSource;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
 import com.arelore.data.sec.umbrella.server.core.mapper.DataSourceMapper;
 import com.arelore.data.sec.umbrella.server.core.service.DataSourceService;
 import com.arelore.data.sec.umbrella.server.core.strategy.DatabaseConnectionStrategy;

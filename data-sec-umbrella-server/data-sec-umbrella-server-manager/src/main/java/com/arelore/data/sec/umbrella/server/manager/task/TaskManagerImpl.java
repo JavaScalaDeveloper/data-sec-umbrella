@@ -6,10 +6,12 @@ import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineJobConfigS
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflinePolicySnapshot;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJob;
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
+import com.arelore.data.sec.umbrella.server.core.service.DataSourceService;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobService;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
 import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
@@ -18,11 +20,13 @@ import com.arelore.data.sec.umbrella.server.manager.task.asset.AssetQueryStrateg
 import com.arelore.data.sec.umbrella.server.manager.task.asset.MySQLTableAssetQueryStrategy;
 import com.arelore.data.sec.umbrella.server.manager.task.infra.RabbitDispatchUtil;
 import com.arelore.data.sec.umbrella.server.manager.task.infra.RedisTaskCacheUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +43,7 @@ public class TaskManagerImpl implements TaskManager {
 
     private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
     private final DbAssetMysqlScanOfflineJobService offlineJobService;
+    private final DataSourceService dataSourceService;
     private final DatabasePolicyService databasePolicyService;
     private final MySQLTableAssetQueryStrategy mySQLAssetQueryStrategy;
     private final RabbitDispatchUtil rabbitDispatchUtil;
@@ -127,6 +132,7 @@ public class TaskManagerImpl implements TaskManager {
         List<OfflinePolicySnapshot> policySnapshots = policies.stream().map(this::policyToSnapshot).collect(Collectors.toList());
         redisTaskCacheUtil.cacheInstanceToJob(inst.getId(), job.getId(), dispatchVersion);
 
+        Map<String, MysqlJdbcCredential> mysqlCredByInstance = new HashMap<>();
         while (submitted < expectedTotal) {
             AssetPage page = assetQueryStrategy.page(job, current, pageSize);
             if (page.getRecords() == null || page.getRecords().isEmpty()) {
@@ -140,6 +146,7 @@ public class TaskManagerImpl implements TaskManager {
                 payload.setTaskName(job.getTaskName());
                 payload.setDispatchVersion(dispatchVersion);
                 payload.setJobConfig(buildJobConfig(job));
+                attachMysqlJdbcCredentials(payload, asset, mysqlCredByInstance);
                 // 每个表资产一个 msg
                 payload.setAssets(List.of(asset));
                 payload.setPolicies(policySnapshots);
@@ -164,6 +171,41 @@ public class TaskManagerImpl implements TaskManager {
                 "assetEngine", "MySQL")));
         jobInstanceService.updateById(inst);
         log.info("Dispatched offline scan instance {} job {}", inst.getId(), job.getId());
+    }
+
+    private void attachMysqlJdbcCredentials(
+            OfflineDatabaseScanDispatchPayload payload,
+            Map<String, Object> asset,
+            Map<String, MysqlJdbcCredential> cache
+    ) {
+        String instance = asset.get("instance") == null ? "" : String.valueOf(asset.get("instance")).trim();
+        if (!StringUtils.hasText(instance)) {
+            return;
+        }
+        if (!cache.containsKey(instance)) {
+            cache.put(instance, lookupMysqlJdbcCredential(instance));
+        }
+        MysqlJdbcCredential cred = cache.get(instance);
+        if (cred != null) {
+            payload.setMysqlJdbcUsername(cred.username());
+            payload.setMysqlJdbcPasswordEncrypted(cred.passwordEncrypted());
+        }
+    }
+
+    private MysqlJdbcCredential lookupMysqlJdbcCredential(String instance) {
+        LambdaQueryWrapper<DataSource> w = new LambdaQueryWrapper<>();
+        w.eq(DataSource::getInstance, instance);
+        w.eq(DataSource::getDataSourceType, "MySQL");
+        w.orderByDesc(DataSource::getId);
+        w.last("limit 1");
+        DataSource ds = dataSourceService.getOne(w);
+        if (ds == null || !StringUtils.hasText(ds.getUsername()) || !StringUtils.hasText(ds.getPassword())) {
+            return null;
+        }
+        return new MysqlJdbcCredential(ds.getUsername(), ds.getPassword());
+    }
+
+    private record MysqlJdbcCredential(String username, String passwordEncrypted) {
     }
 
     private OfflineJobConfigSnapshot buildJobConfig(DbAssetMysqlScanOfflineJob job) {

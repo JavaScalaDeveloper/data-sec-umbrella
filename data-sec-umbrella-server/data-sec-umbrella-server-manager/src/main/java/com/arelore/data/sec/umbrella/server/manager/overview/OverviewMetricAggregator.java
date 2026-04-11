@@ -1,11 +1,11 @@
 package com.arelore.data.sec.umbrella.server.manager.overview;
 
 import com.alibaba.fastjson2.JSON;
-import com.arelore.data.sec.umbrella.server.core.entity.DataSource;
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJob;
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJobInstance;
-import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
-import com.arelore.data.sec.umbrella.server.core.entity.OverviewMetricSnapshot;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.OverviewMetricSnapshot;
 import com.arelore.data.sec.umbrella.server.core.enums.MetricPeriodEnum;
 import com.arelore.data.sec.umbrella.server.core.enums.ManualReviewLabelEnum;
 import com.arelore.data.sec.umbrella.server.core.enums.OverviewMetricCodeEnum;

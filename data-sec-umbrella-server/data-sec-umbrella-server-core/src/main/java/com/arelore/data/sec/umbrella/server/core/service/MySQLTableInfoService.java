@@ -1,7 +1,7 @@
 package com.arelore.data.sec.umbrella.server.core.service;
 
 import com.arelore.data.sec.umbrella.server.core.dto.request.PageRequest;
-import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 

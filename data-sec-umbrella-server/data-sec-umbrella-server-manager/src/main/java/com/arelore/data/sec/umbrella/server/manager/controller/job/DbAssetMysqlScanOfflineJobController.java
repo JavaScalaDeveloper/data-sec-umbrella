@@ -9,14 +9,14 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOff
 import com.arelore.data.sec.umbrella.server.core.dto.response.DbAssetMysqlScanOfflineJobResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.OfflineScanSnapshotDetailResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobService;
 import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
 import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
 import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
 import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotAssetEngineResolver;
-import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotClickHouseQueryService;
+import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotQueryService;
 import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -39,17 +39,17 @@ public class DbAssetMysqlScanOfflineJobController {
     private final DbAssetMysqlScanOfflineJobService offlineScanJobService;
     private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
     private final TaskManager taskManager;
-    private final OfflineScanSnapshotClickHouseQueryService offlineScanSnapshotClickHouseQueryService;
+    private final OfflineScanSnapshotQueryService offlineScanSnapshotQueryService;
 
     @Autowired
     public DbAssetMysqlScanOfflineJobController(DbAssetMysqlScanOfflineJobService offlineScanJobService,
                                                 DbAssetMysqlScanOfflineJobInstanceService jobInstanceService,
                                                 TaskManager taskManager,
-                                                OfflineScanSnapshotClickHouseQueryService offlineScanSnapshotClickHouseQueryService) {
+                                                OfflineScanSnapshotQueryService offlineScanSnapshotQueryService) {
         this.offlineScanJobService = offlineScanJobService;
         this.jobInstanceService = jobInstanceService;
         this.taskManager = taskManager;
-        this.offlineScanSnapshotClickHouseQueryService = offlineScanSnapshotClickHouseQueryService;
+        this.offlineScanSnapshotQueryService = offlineScanSnapshotQueryService;
     }
 
     @PostMapping("/list")
@@ -102,14 +102,10 @@ public class DbAssetMysqlScanOfflineJobController {
             return Result.error("实例不存在");
         }
         String engine = OfflineScanSnapshotAssetEngineResolver.resolve(inst);
+        request.setEngine(engine);
+        request.setScanKind(scanKind);
         try {
-            return Result.success(offlineScanSnapshotClickHouseQueryService.query(
-                    request.getId(),
-                    engine,
-                    scanKind,
-                    request.getUniqueKeyContains(),
-                    request.getSensitivityLevels(),
-                    request.getSensitivityTagsContains()));
+            return Result.success(offlineScanSnapshotQueryService.query(request));
         } catch (IllegalStateException ex) {
             return Result.error(ex.getMessage());
         }

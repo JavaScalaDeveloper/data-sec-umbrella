@@ -3,7 +3,7 @@ package com.arelore.data.sec.umbrella.server.core.service.impl.admin;
 import com.arelore.data.sec.umbrella.server.core.dto.request.AdminUserQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.AdminUserSaveRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.AdminUserResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.AdminUser;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.AdminUser;
 import com.arelore.data.sec.umbrella.server.core.mapper.AdminUserMapper;
 import com.arelore.data.sec.umbrella.server.core.service.AdminUserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;

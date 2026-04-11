@@ -1,7 +1,7 @@
 package com.arelore.data.sec.umbrella.server.manager.task.asset;
 
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJob;
-import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;

@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.strategy;
 
-import com.arelore.data.sec.umbrella.server.core.entity.DataSource;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
 
 /**
  * 数据库连接测试策略接口

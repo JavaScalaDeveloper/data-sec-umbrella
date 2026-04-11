@@ -3,7 +3,7 @@ package com.arelore.data.sec.umbrella.server.manager.controller.overview;
 import com.arelore.data.sec.umbrella.server.core.common.Result;
 import com.arelore.data.sec.umbrella.server.core.dto.request.OverviewMetricQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.OverviewMetricQueryResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.OverviewMetricSnapshot;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.OverviewMetricSnapshot;
 import com.arelore.data.sec.umbrella.server.core.enums.MetricPeriodEnum;
 import com.arelore.data.sec.umbrella.server.core.enums.OverviewMetricCodeEnum;
 import com.arelore.data.sec.umbrella.server.core.service.OverviewMetricSnapshotService;

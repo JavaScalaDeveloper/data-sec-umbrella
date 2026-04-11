@@ -1,7 +1,7 @@
 package com.arelore.data.sec.umbrella.server.core.service.impl.dataasset;
 
 import com.arelore.data.sec.umbrella.server.core.dto.request.PageRequest;
-import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.enums.ManualReviewLabelEnum;
 import com.arelore.data.sec.umbrella.server.core.mapper.MySQLTableInfoMapper;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;

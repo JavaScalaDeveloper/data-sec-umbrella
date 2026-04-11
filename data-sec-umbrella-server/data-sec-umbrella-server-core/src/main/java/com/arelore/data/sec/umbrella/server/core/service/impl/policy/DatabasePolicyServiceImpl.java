@@ -6,7 +6,7 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestR
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.DatabasePolicy;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DatabasePolicy;
 import com.arelore.data.sec.umbrella.server.core.mapper.DatabasePolicyMapper;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
 import com.arelore.data.sec.umbrella.server.core.service.llm.AiRuleLlmService;

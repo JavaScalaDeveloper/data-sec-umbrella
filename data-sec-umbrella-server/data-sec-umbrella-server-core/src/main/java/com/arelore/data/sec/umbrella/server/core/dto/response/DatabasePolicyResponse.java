@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.dto.response;
 
-import com.arelore.data.sec.umbrella.server.core.entity.DatabasePolicy;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DatabasePolicy;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

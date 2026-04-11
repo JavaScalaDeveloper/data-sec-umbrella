@@ -23,6 +23,13 @@ public class OfflineDatabaseScanDispatchPayload {
     private Long dispatchVersion;
     /** 任务配置快照 */
     private OfflineJobConfigSnapshot jobConfig;
+    /**
+     * 管理端从 mysql_data_source 解析后填入，与 {@link #jobConfig} 中 sampleCount/sampleMode 等一并下发；
+     * Worker 优先用此连接目标库，避免在 Worker 进程内再查数据源配置表。
+     */
+    private String mysqlJdbcUsername;
+    /** 与库中 mysql_data_source.password 一致（RSA 密文），Worker 用私钥解密 */
+    private String mysqlJdbcPasswordEncrypted;
     /** 待扫描库资产快照 */
     private List<Map<String, Object>> assets;
     /** 适用策略快照 */

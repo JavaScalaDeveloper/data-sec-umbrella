@@ -3,7 +3,7 @@ package com.arelore.data.sec.umbrella.server.manager.controller.dataasset;
 import com.arelore.data.sec.umbrella.server.core.common.Result;
 import com.arelore.data.sec.umbrella.server.core.dto.request.ManualReviewUpdateRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.PageRequest;
-import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
 import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
 import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;

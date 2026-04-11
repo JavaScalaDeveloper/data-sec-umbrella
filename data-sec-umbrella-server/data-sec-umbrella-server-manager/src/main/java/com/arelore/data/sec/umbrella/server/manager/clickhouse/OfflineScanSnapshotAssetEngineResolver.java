@@ -1,7 +1,7 @@
 package com.arelore.data.sec.umbrella.server.manager.clickhouse;
 
 import com.alibaba.fastjson2.JSON;
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
 import org.springframework.util.StringUtils;
 
 import java.util.Map;

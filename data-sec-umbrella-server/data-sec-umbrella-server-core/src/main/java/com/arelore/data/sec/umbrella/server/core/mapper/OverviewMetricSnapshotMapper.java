@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.mapper;
 
-import com.arelore.data.sec.umbrella.server.core.entity.OverviewMetricSnapshot;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.OverviewMetricSnapshot;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;

@@ -4,7 +4,7 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.ApiPolicyQueryReque
 import com.arelore.data.sec.umbrella.server.core.dto.request.ApiPolicyRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.ApiPolicyResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.ApiPolicy;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.ApiPolicy;
 import com.arelore.data.sec.umbrella.server.core.mapper.ApiPolicyMapper;
 import com.arelore.data.sec.umbrella.server.core.service.ApiPolicyService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;

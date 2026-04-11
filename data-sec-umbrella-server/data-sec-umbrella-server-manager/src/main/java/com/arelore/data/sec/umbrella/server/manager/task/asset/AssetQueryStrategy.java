@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.manager.task.asset;
 
-import com.arelore.data.sec.umbrella.server.core.entity.DbAssetMysqlScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
 
 public interface AssetQueryStrategy {
 

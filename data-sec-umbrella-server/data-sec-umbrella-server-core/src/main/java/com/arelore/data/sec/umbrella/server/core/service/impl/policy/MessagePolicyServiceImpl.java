@@ -4,7 +4,7 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.MessagePolicyQueryR
 import com.arelore.data.sec.umbrella.server.core.dto.request.MessagePolicyRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.MessagePolicyResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.MessagePolicy;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MessagePolicy;
 import com.arelore.data.sec.umbrella.server.core.mapper.MessagePolicyMapper;
 import com.arelore.data.sec.umbrella.server.core.service.MessagePolicyService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;

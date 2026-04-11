@@ -1,8 +1,8 @@
 package com.arelore.data.sec.umbrella.server.core.schedule;
 
-import com.arelore.data.sec.umbrella.server.core.entity.DataSource;
-import com.arelore.data.sec.umbrella.server.core.entity.MySQLDatabaseInfo;
-import com.arelore.data.sec.umbrella.server.core.entity.MySQLTableInfo;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLDatabaseInfo;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.service.DataSourceService;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLDatabaseInfoService;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
