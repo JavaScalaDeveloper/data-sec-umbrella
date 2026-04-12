@@ -1,6 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
-    Alert,
     Button,
     Card,
     Col,
@@ -82,7 +81,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC<BatchMysqlOfflineScanJobPanelProps
             const res = await databasePolicyApi.getPage({
                 current: 1,
                 size: 500,
-                ...(variant === 'clickhouse' ? {databaseType: 'Clickhouse'} : {}),
+                databaseType: variant === 'clickhouse' ? 'Clickhouse' : 'MySQL',
             });
             if (res.code === 200 && res.data?.records) {
                 setPolicyOptions(

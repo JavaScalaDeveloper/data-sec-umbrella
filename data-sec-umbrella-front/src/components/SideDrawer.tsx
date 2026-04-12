@@ -14,7 +14,13 @@ const SideDrawer: React.FC<SideDrawerProps> = ({open, onClose}) => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const menuItems = [
+    const menuItems: {
+        title: string;
+        icon: React.ReactNode;
+        path: string;
+        /** 用于高亮「当前模块」，例如 /admin-center/role 仍属管理中心 */
+        activePathPrefix?: string;
+    }[] = [
         {
             title: '数据库安全保护伞',
             icon: <DatabaseOutlined style={{fontSize: '32px', color: '#1890ff'}}/>,
@@ -33,7 +39,8 @@ const SideDrawer: React.FC<SideDrawerProps> = ({open, onClose}) => {
         {
             title: '管理中心',
             icon: <SettingOutlined style={{fontSize: '32px', color: '#f5222d'}}/>,
-            path: '/admin-center',
+            path: '/admin-center/account',
+            activePathPrefix: '/admin-center',
         },
     ];
 
@@ -42,7 +49,8 @@ const SideDrawer: React.FC<SideDrawerProps> = ({open, onClose}) => {
         onClose();
     };
 
-    const currentModule = menuItems.find((item) => location.pathname.startsWith(item.path)) || menuItems[0];
+    const currentModule =
+        menuItems.find((item) => location.pathname.startsWith(item.activePathPrefix ?? item.path)) || menuItems[0];
 
     return (<Drawer
         title="模块选择"

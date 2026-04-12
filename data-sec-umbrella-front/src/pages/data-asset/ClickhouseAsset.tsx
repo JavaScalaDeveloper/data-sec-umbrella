@@ -72,6 +72,16 @@ interface ColumnRow extends Column {
   aiSamples?: string[];
 }
 
+/** 列详情表：按敏感等级 1–5 数值排序，无/非法值在升序时排在末尾 */
+function compareColumnSensitivity(a?: string, b?: string): number {
+  const rank = (v?: string) => {
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 1 && n <= 5) return n;
+    return 999;
+  };
+  return rank(a) - rank(b);
+}
+
 // 表信息类型
 interface Table {
   id: number;
@@ -799,6 +809,10 @@ const ClickhouseAsset: React.FC = () => {
                     title: '规则敏感等级',
                     dataIndex: 'scanSensitivityLevel',
                     key: 'scanSensitivityLevel',
+                    sorter: (a: ColumnRow, b: ColumnRow) =>
+                      compareColumnSensitivity(a.scanSensitivityLevel, b.scanSensitivityLevel),
+                    sortDirections: ['descend', 'ascend'],
+                    showSorterTooltip: true,
                     render: (value: string) => renderSensitivityLevel(value),
                   },
                   {
@@ -823,6 +837,10 @@ const ClickhouseAsset: React.FC = () => {
                     title: 'AI敏感等级',
                     dataIndex: 'aiSensitivityLevel',
                     key: 'aiSensitivityLevel',
+                    sorter: (a: ColumnRow, b: ColumnRow) =>
+                      compareColumnSensitivity(a.aiSensitivityLevel, b.aiSensitivityLevel),
+                    sortDirections: ['descend', 'ascend'],
+                    showSorterTooltip: true,
                     render: (value: string) => renderSensitivityLevel(value),
                   },
                   {

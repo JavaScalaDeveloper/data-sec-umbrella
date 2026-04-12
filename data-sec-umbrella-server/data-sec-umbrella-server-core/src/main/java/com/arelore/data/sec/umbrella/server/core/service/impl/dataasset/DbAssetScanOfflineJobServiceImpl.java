@@ -1,17 +1,17 @@
 package com.arelore.data.sec.umbrella.server.core.service.impl.dataasset;
 
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobIdRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobQueryRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobSaveRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.response.DbAssetMysqlScanOfflineJobResponse;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetScanOfflineJobIdRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetScanOfflineJobQueryRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetScanOfflineJobSaveRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.response.DbAssetScanOfflineJobResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
-import com.arelore.data.sec.umbrella.server.core.mapper.DbAssetMysqlScanOfflineJobMapper;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobService;
+import com.arelore.data.sec.umbrella.server.core.mapper.DbAssetScanOfflineJobMapper;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobInstanceService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -24,58 +24,58 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMysqlScanOfflineJobMapper, DbAssetMysqlScanOfflineJob>
-        implements DbAssetMysqlScanOfflineJobService {
+public class DbAssetScanOfflineJobServiceImpl extends ServiceImpl<DbAssetScanOfflineJobMapper, DbAssetScanOfflineJob>
+        implements DbAssetScanOfflineJobService {
 
     private static final int SAMPLE_MIN = 1;
     private static final int SAMPLE_MAX = 200;
 
-    private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
+    private final DbAssetScanOfflineJobInstanceService jobInstanceService;
 
-    public DbAssetMysqlScanOfflineJobServiceImpl(DbAssetMysqlScanOfflineJobInstanceService jobInstanceService) {
+    public DbAssetScanOfflineJobServiceImpl(DbAssetScanOfflineJobInstanceService jobInstanceService) {
         this.jobInstanceService = jobInstanceService;
     }
 
     @Override
-    public PageResponse<DbAssetMysqlScanOfflineJobResponse> getPage(DbAssetMysqlScanOfflineJobQueryRequest request) {
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> w = new LambdaQueryWrapper<>();
+    public PageResponse<DbAssetScanOfflineJobResponse> getPage(DbAssetScanOfflineJobQueryRequest request) {
+        LambdaQueryWrapper<DbAssetScanOfflineJob> w = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(request.getTaskName())) {
-            w.like(DbAssetMysqlScanOfflineJob::getTaskName, request.getTaskName().trim());
+            w.like(DbAssetScanOfflineJob::getTaskName, request.getTaskName().trim());
         }
         if (StringUtils.hasText(request.getDatabaseType())) {
             applyJobDatabaseTypeFilter(w, request.getDatabaseType());
         }
-        w.orderByDesc(DbAssetMysqlScanOfflineJob::getId);
+        w.orderByDesc(DbAssetScanOfflineJob::getId);
         long current = request.getCurrent() != null ? request.getCurrent() : 1L;
         long size = request.getSize() != null ? request.getSize() : 10L;
-        Page<DbAssetMysqlScanOfflineJob> page = new Page<>(current, size);
-        IPage<DbAssetMysqlScanOfflineJob> pageResult = this.page(page, w);
-        List<DbAssetMysqlScanOfflineJobResponse> records = pageResult.getRecords().stream()
+        Page<DbAssetScanOfflineJob> page = new Page<>(current, size);
+        IPage<DbAssetScanOfflineJob> pageResult = this.page(page, w);
+        List<DbAssetScanOfflineJobResponse> records = pageResult.getRecords().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
         return new PageResponse<>(records, pageResult.getTotal(), pageResult.getCurrent(), pageResult.getSize());
     }
 
-    private void applyJobDatabaseTypeFilter(LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> w, String databaseType) {
+    private void applyJobDatabaseTypeFilter(LambdaQueryWrapper<DbAssetScanOfflineJob> w, String databaseType) {
         String norm = OfflineScanJobDatabaseType.normalizeJob(databaseType);
         if (OfflineScanJobDatabaseType.MYSQL.equals(norm)) {
-            w.and(q -> q.eq(DbAssetMysqlScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.MYSQL)
-                    .or().isNull(DbAssetMysqlScanOfflineJob::getDatabaseType));
+            w.and(q -> q.eq(DbAssetScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.MYSQL)
+                    .or().isNull(DbAssetScanOfflineJob::getDatabaseType));
         } else {
-            w.eq(DbAssetMysqlScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE);
+            w.eq(DbAssetScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE);
         }
     }
 
     @Override
-    public DbAssetMysqlScanOfflineJobResponse getById(Long id) {
-        DbAssetMysqlScanOfflineJob entity = super.getById(id);
+    public DbAssetScanOfflineJobResponse getById(Long id) {
+        DbAssetScanOfflineJob entity = super.getById(id);
         return entity == null ? null : toResponse(entity);
     }
 
     @Override
-    public Long create(DbAssetMysqlScanOfflineJobSaveRequest request) {
+    public Long create(DbAssetScanOfflineJobSaveRequest request) {
         validateSave(request, true);
-        DbAssetMysqlScanOfflineJob entity = new DbAssetMysqlScanOfflineJob();
+        DbAssetScanOfflineJob entity = new DbAssetScanOfflineJob();
         BeanUtils.copyProperties(request, entity);
         entity.setId(null);
         applyDefaults(entity);
@@ -88,12 +88,12 @@ public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMy
     }
 
     @Override
-    public boolean update(DbAssetMysqlScanOfflineJobSaveRequest request) {
+    public boolean update(DbAssetScanOfflineJobSaveRequest request) {
         if (request.getId() == null) {
             throw new IllegalArgumentException("id不能为空");
         }
         validateSave(request, false);
-        DbAssetMysqlScanOfflineJob existing = super.getById(request.getId());
+        DbAssetScanOfflineJob existing = super.getById(request.getId());
         if (existing == null) {
             return false;
         }
@@ -102,7 +102,7 @@ public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMy
         if (!existingNorm.equals(requestNorm)) {
             throw new IllegalArgumentException("任务引擎与当前接口不匹配");
         }
-        DbAssetMysqlScanOfflineJob entity = new DbAssetMysqlScanOfflineJob();
+        DbAssetScanOfflineJob entity = new DbAssetScanOfflineJob();
         BeanUtils.copyProperties(request, entity);
         if (!StringUtils.hasText(entity.getDatabaseType())) {
             entity.setDatabaseType(existing.getDatabaseType());
@@ -124,12 +124,12 @@ public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMy
     }
 
     @Override
-    public Long execute(DbAssetMysqlScanOfflineJobIdRequest request, String apiDatabaseType) {
+    public Long execute(DbAssetScanOfflineJobIdRequest request, String apiDatabaseType) {
         if (request.getId() == null) {
             throw new IllegalArgumentException("id不能为空");
         }
         String apiNorm = OfflineScanJobDatabaseType.normalizeJob(apiDatabaseType);
-        DbAssetMysqlScanOfflineJob job = super.getById(request.getId());
+        DbAssetScanOfflineJob job = super.getById(request.getId());
         if (job == null) {
             return null;
         }
@@ -140,7 +140,7 @@ public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMy
         if (!apiNorm.equals(jobNorm)) {
             throw new IllegalStateException("任务引擎与当前接口不匹配");
         }
-        DbAssetMysqlScanOfflineJobInstance row = new DbAssetMysqlScanOfflineJobInstance();
+        DbAssetScanOfflineJobInstance row = new DbAssetScanOfflineJobInstance();
         row.setTaskName(job.getTaskName());
         row.setDatabaseType(jobNorm);
         row.setRunStatus(OfflineJobRunStatusEnum.WAITING.getValue());
@@ -162,25 +162,25 @@ public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMy
     }
 
     @Override
-    public DbAssetMysqlScanOfflineJob findLatestByTaskName(String taskName, String databaseType) {
+    public DbAssetScanOfflineJob findLatestByTaskName(String taskName, String databaseType) {
         if (!StringUtils.hasText(taskName)) {
             return null;
         }
         String norm = OfflineScanJobDatabaseType.normalizeJob(databaseType);
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> w = new LambdaQueryWrapper<>();
-        w.eq(DbAssetMysqlScanOfflineJob::getTaskName, taskName.trim());
+        LambdaQueryWrapper<DbAssetScanOfflineJob> w = new LambdaQueryWrapper<>();
+        w.eq(DbAssetScanOfflineJob::getTaskName, taskName.trim());
         if (OfflineScanJobDatabaseType.MYSQL.equals(norm)) {
-            w.and(q -> q.eq(DbAssetMysqlScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.MYSQL)
-                    .or().isNull(DbAssetMysqlScanOfflineJob::getDatabaseType));
+            w.and(q -> q.eq(DbAssetScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.MYSQL)
+                    .or().isNull(DbAssetScanOfflineJob::getDatabaseType));
         } else {
-            w.eq(DbAssetMysqlScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE);
+            w.eq(DbAssetScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE);
         }
-        w.orderByDesc(DbAssetMysqlScanOfflineJob::getId);
+        w.orderByDesc(DbAssetScanOfflineJob::getId);
         w.last("limit 1");
         return this.getOne(w);
     }
 
-    private void validateSave(DbAssetMysqlScanOfflineJobSaveRequest request, boolean creating) {
+    private void validateSave(DbAssetScanOfflineJobSaveRequest request, boolean creating) {
         if (!StringUtils.hasText(request.getTaskName())) {
             throw new IllegalArgumentException("任务名不能为空");
         }
@@ -189,16 +189,16 @@ public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMy
             throw new IllegalArgumentException("样例数必须在" + SAMPLE_MIN + "~" + SAMPLE_MAX + "之间");
         }
         String effectiveDb = OfflineScanJobDatabaseType.normalizeJob(request.getDatabaseType());
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> w = new LambdaQueryWrapper<>();
-        w.eq(DbAssetMysqlScanOfflineJob::getTaskName, request.getTaskName().trim());
+        LambdaQueryWrapper<DbAssetScanOfflineJob> w = new LambdaQueryWrapper<>();
+        w.eq(DbAssetScanOfflineJob::getTaskName, request.getTaskName().trim());
         if (OfflineScanJobDatabaseType.MYSQL.equals(effectiveDb)) {
-            w.and(q -> q.eq(DbAssetMysqlScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.MYSQL)
-                    .or().isNull(DbAssetMysqlScanOfflineJob::getDatabaseType));
+            w.and(q -> q.eq(DbAssetScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.MYSQL)
+                    .or().isNull(DbAssetScanOfflineJob::getDatabaseType));
         } else {
-            w.eq(DbAssetMysqlScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE);
+            w.eq(DbAssetScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE);
         }
         if (!creating) {
-            w.ne(DbAssetMysqlScanOfflineJob::getId, request.getId());
+            w.ne(DbAssetScanOfflineJob::getId, request.getId());
         }
         long cnt = this.count(w);
         if (cnt > 0) {
@@ -206,7 +206,7 @@ public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMy
         }
     }
 
-    private void applyDefaults(DbAssetMysqlScanOfflineJob entity) {
+    private void applyDefaults(DbAssetScanOfflineJob entity) {
         if (!StringUtils.hasText(entity.getDatabaseType())) {
             entity.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
         } else {
@@ -241,8 +241,8 @@ public class DbAssetMysqlScanOfflineJobServiceImpl extends ServiceImpl<DbAssetMy
         }
     }
 
-    private DbAssetMysqlScanOfflineJobResponse toResponse(DbAssetMysqlScanOfflineJob entity) {
-        DbAssetMysqlScanOfflineJobResponse r = new DbAssetMysqlScanOfflineJobResponse();
+    private DbAssetScanOfflineJobResponse toResponse(DbAssetScanOfflineJob entity) {
+        DbAssetScanOfflineJobResponse r = new DbAssetScanOfflineJobResponse();
         BeanUtils.copyProperties(entity, r);
         return r;
     }

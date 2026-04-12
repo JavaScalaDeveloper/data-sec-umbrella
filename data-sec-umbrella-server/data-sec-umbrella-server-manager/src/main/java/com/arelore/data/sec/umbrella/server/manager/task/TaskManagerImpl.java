@@ -8,13 +8,13 @@ import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseSc
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflinePolicySnapshot;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyResponse;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
 import com.arelore.data.sec.umbrella.server.core.service.DataSourceService;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobService;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobInstanceService;
 import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
 import com.arelore.data.sec.umbrella.server.manager.task.asset.AssetPage;
 import com.arelore.data.sec.umbrella.server.manager.task.asset.AssetQueryStrategy;
@@ -41,8 +41,8 @@ import java.util.stream.Collectors;
 @Service
 public class TaskManagerImpl implements TaskManager {
 
-    private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
-    private final DbAssetMysqlScanOfflineJobService offlineJobService;
+    private final DbAssetScanOfflineJobInstanceService jobInstanceService;
+    private final DbAssetScanOfflineJobService offlineJobService;
     private final DataSourceService dataSourceService;
     private final DatabasePolicyService databasePolicyService;
     private final MySQLTableAssetQueryStrategy mySQLAssetQueryStrategy;
@@ -50,8 +50,8 @@ public class TaskManagerImpl implements TaskManager {
     private final RabbitDispatchUtil rabbitDispatchUtil;
     private final RedisTaskCacheUtil redisTaskCacheUtil;
 
-    public TaskManagerImpl(DbAssetMysqlScanOfflineJobInstanceService jobInstanceService,
-                           DbAssetMysqlScanOfflineJobService offlineJobService,
+    public TaskManagerImpl(DbAssetScanOfflineJobInstanceService jobInstanceService,
+                           DbAssetScanOfflineJobService offlineJobService,
                            DataSourceService dataSourceService,
                            DatabasePolicyService databasePolicyService,
                            MySQLTableAssetQueryStrategy mySQLAssetQueryStrategy,
@@ -70,7 +70,7 @@ public class TaskManagerImpl implements TaskManager {
 
     @Override
     public void dispatchOfflineMysqlScan() {
-        List<DbAssetMysqlScanOfflineJobInstance> waiting = jobInstanceService.listWaitingInstances();
+        List<DbAssetScanOfflineJobInstance> waiting = jobInstanceService.listWaitingInstances();
         if (waiting.isEmpty()) {
             return;
         }
@@ -81,7 +81,7 @@ public class TaskManagerImpl implements TaskManager {
             return;
         }
 
-        for (DbAssetMysqlScanOfflineJobInstance inst : waiting) {
+        for (DbAssetScanOfflineJobInstance inst : waiting) {
             try {
                 dispatchOne(inst, allPolicies);
             } catch (Exception e) {
@@ -91,21 +91,21 @@ public class TaskManagerImpl implements TaskManager {
         }
     }
 
-    private void failAll(List<DbAssetMysqlScanOfflineJobInstance> list, String reason) {
-        for (DbAssetMysqlScanOfflineJobInstance inst : list) {
+    private void failAll(List<DbAssetScanOfflineJobInstance> list, String reason) {
+        for (DbAssetScanOfflineJobInstance inst : list) {
             markFailed(inst, reason);
         }
     }
 
-    private void markFailed(DbAssetMysqlScanOfflineJobInstance inst, String reason) {
+    private void markFailed(DbAssetScanOfflineJobInstance inst, String reason) {
         inst.setRunStatus(OfflineJobRunStatusEnum.FAILED.getValue());
         inst.setExtendInfo(JSON.toJSONString(Map.of("reason", reason != null ? reason : "unknown")));
         jobInstanceService.updateById(inst);
     }
 
-    private void dispatchOne(DbAssetMysqlScanOfflineJobInstance inst, List<DatabasePolicyResponse> allPolicies)
+    private void dispatchOne(DbAssetScanOfflineJobInstance inst, List<DatabasePolicyResponse> allPolicies)
             throws Exception {
-        DbAssetMysqlScanOfflineJob job = offlineJobService.findLatestByTaskName(inst.getTaskName(), inst.getDatabaseType());
+        DbAssetScanOfflineJob job = offlineJobService.findLatestByTaskName(inst.getTaskName(), inst.getDatabaseType());
         if (job == null) {
             markFailed(inst, "关联的离线任务不存在");
             return;
@@ -232,7 +232,7 @@ public class TaskManagerImpl implements TaskManager {
     private record MysqlJdbcCredential(String username, String passwordEncrypted) {
     }
 
-    private OfflineJobConfigSnapshot buildJobConfig(DbAssetMysqlScanOfflineJob job) {
+    private OfflineJobConfigSnapshot buildJobConfig(DbAssetScanOfflineJob job) {
         OfflineJobConfigSnapshot snapshot = new OfflineJobConfigSnapshot();
         snapshot.setSampleCount(job.getSampleCount());
         snapshot.setSampleMode(job.getSampleMode());

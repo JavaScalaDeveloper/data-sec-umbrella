@@ -2,7 +2,7 @@ package com.arelore.data.sec.umbrella.server.manager.clickhouse;
 
 import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJobInstance;
 import org.springframework.util.StringUtils;
 
 import java.util.Map;
@@ -17,7 +17,7 @@ public final class OfflineScanSnapshotAssetEngineResolver {
     private OfflineScanSnapshotAssetEngineResolver() {
     }
 
-    public static String resolve(DbAssetMysqlScanOfflineJobInstance inst) {
+    public static String resolve(DbAssetScanOfflineJobInstance inst) {
         if (inst != null && StringUtils.hasText(inst.getDatabaseType())) {
             if (OfflineScanJobDatabaseType.CLICKHOUSE.equals(OfflineScanJobDatabaseType.normalizeInstance(inst.getDatabaseType()))) {
                 return "Clickhouse";

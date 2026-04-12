@@ -1,9 +1,9 @@
 package com.arelore.data.sec.umbrella.server.worker.task;
 
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobInstanceService;
 import com.arelore.data.sec.umbrella.server.worker.ai.AiAssetProcessOutcome;
 import com.arelore.data.sec.umbrella.server.worker.ai.OfflineAiAssetHandler;
 import com.arelore.data.sec.umbrella.server.worker.ai.OfflineAiScanSupport;
@@ -25,13 +25,13 @@ public class AiTaskWorkerImpl implements OfflineScanTaskProcessor {
 
     private final List<OfflineAiAssetHandler> aiAssetHandlers;
     private final StringRedisTemplate stringRedisTemplate;
-    private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
+    private final DbAssetScanOfflineJobInstanceService jobInstanceService;
 
     private final Map<String, OfflineAiAssetHandler> handlerByType = new ConcurrentHashMap<>();
 
     public AiTaskWorkerImpl(List<OfflineAiAssetHandler> aiAssetHandlers,
                             StringRedisTemplate stringRedisTemplate,
-                            DbAssetMysqlScanOfflineJobInstanceService jobInstanceService) {
+                            DbAssetScanOfflineJobInstanceService jobInstanceService) {
         this.aiAssetHandlers = aiAssetHandlers;
         this.stringRedisTemplate = stringRedisTemplate;
         this.jobInstanceService = jobInstanceService;
@@ -115,7 +115,7 @@ public class AiTaskWorkerImpl implements OfflineScanTaskProcessor {
         if (instanceId == null) {
             return;
         }
-        DbAssetMysqlScanOfflineJobInstance inst = jobInstanceService.getById(instanceId);
+        DbAssetScanOfflineJobInstance inst = jobInstanceService.getById(instanceId);
         if (inst == null) {
             return;
         }

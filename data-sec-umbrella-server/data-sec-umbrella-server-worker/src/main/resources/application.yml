@@ -65,7 +65,7 @@ offline-scan:
 llm:
   ollama:
     enabled: ${LLM_OLLAMA_ENABLED:true}
-    base-url: ${LLM_OLLAMA_BASE_URL:http://book-i5-12h:11434}
+    base-url: ${LLM_OLLAMA_BASE_URL:http://book-n95:11434}
     model-name: ${LLM_OLLAMA_MODEL:qwen3:0.6b}
     fallback-model-name: ${LLM_OLLAMA_FALLBACK_MODEL:qwen3:0.6b}
     timeout-seconds: ${LLM_OLLAMA_TIMEOUT_SECONDS:1200}

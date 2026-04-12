@@ -4,8 +4,8 @@ import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.ClickhouseTableInfo;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.OverviewMetricSnapshot;
 import com.arelore.data.sec.umbrella.server.core.enums.MetricPeriodEnum;
@@ -15,8 +15,8 @@ import com.arelore.data.sec.umbrella.server.core.service.ClickhouseDatabaseInfoS
 import com.arelore.data.sec.umbrella.server.core.service.ClickhouseTableInfoService;
 import com.arelore.data.sec.umbrella.server.core.service.DataSourceService;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobInstanceService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobService;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLDatabaseInfoService;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
 import com.arelore.data.sec.umbrella.server.core.service.OverviewMetricSnapshotService;
@@ -53,8 +53,8 @@ public class OverviewMetricAggregator {
 
     private final DatabasePolicyService databasePolicyService;
     private final DataSourceService dataSourceService;
-    private final DbAssetMysqlScanOfflineJobService offlineJobService;
-    private final DbAssetMysqlScanOfflineJobInstanceService offlineJobInstanceService;
+    private final DbAssetScanOfflineJobService offlineJobService;
+    private final DbAssetScanOfflineJobInstanceService offlineJobInstanceService;
     private final MySQLDatabaseInfoService mySQLDatabaseInfoService;
     private final MySQLTableInfoService mySQLTableInfoService;
     private final ClickhouseDatabaseInfoService clickhouseDatabaseInfoService;
@@ -86,18 +86,18 @@ public class OverviewMetricAggregator {
         }
         int instanceTotal = instances.size();
 
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> jobQw = new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<DbAssetScanOfflineJob> jobQw = new LambdaQueryWrapper<>();
         int taskTotal = (int) offlineJobService.count(jobQw);
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> jobEnabledQw = new LambdaQueryWrapper<>();
-        jobEnabledQw.eq(DbAssetMysqlScanOfflineJob::getEnabledStatus, 1);
+        LambdaQueryWrapper<DbAssetScanOfflineJob> jobEnabledQw = new LambdaQueryWrapper<>();
+        jobEnabledQw.eq(DbAssetScanOfflineJob::getEnabledStatus, 1);
         int taskEnabledTotal = (int) offlineJobService.count(jobEnabledQw);
 
         ZoneId zone = ZoneId.systemDefault();
         java.util.Date dayStart = java.util.Date.from(targetDate.atStartOfDay(zone).toInstant());
         java.util.Date nextDayStart = java.util.Date.from(targetDate.plusDays(1).atStartOfDay(zone).toInstant());
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJobInstance> instQw = new LambdaQueryWrapper<>();
-        instQw.ge(DbAssetMysqlScanOfflineJobInstance::getCreateTime, dayStart)
-                .lt(DbAssetMysqlScanOfflineJobInstance::getCreateTime, nextDayStart);
+        LambdaQueryWrapper<DbAssetScanOfflineJobInstance> instQw = new LambdaQueryWrapper<>();
+        instQw.ge(DbAssetScanOfflineJobInstance::getCreateTime, dayStart)
+                .lt(DbAssetScanOfflineJobInstance::getCreateTime, nextDayStart);
         int batchTaskInstanceTotal = (int) offlineJobInstanceService.count(instQw);
 
         int databaseTotal = (int) mySQLDatabaseInfoService.count();
@@ -177,18 +177,18 @@ public class OverviewMetricAggregator {
         }
         int instanceTotal = instances.size();
 
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> jobCh = clickhouseJobTypeWrapper();
+        LambdaQueryWrapper<DbAssetScanOfflineJob> jobCh = clickhouseJobTypeWrapper();
         int taskTotal = (int) offlineJobService.count(jobCh);
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> jobEnabledCh = clickhouseJobTypeWrapper();
-        jobEnabledCh.eq(DbAssetMysqlScanOfflineJob::getEnabledStatus, 1);
+        LambdaQueryWrapper<DbAssetScanOfflineJob> jobEnabledCh = clickhouseJobTypeWrapper();
+        jobEnabledCh.eq(DbAssetScanOfflineJob::getEnabledStatus, 1);
         int taskEnabledTotal = (int) offlineJobService.count(jobEnabledCh);
 
         ZoneId zone = ZoneId.systemDefault();
         java.util.Date dayStart = java.util.Date.from(targetDate.atStartOfDay(zone).toInstant());
         java.util.Date nextDayStart = java.util.Date.from(targetDate.plusDays(1).atStartOfDay(zone).toInstant());
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJobInstance> instCh = clickhouseInstanceTypeWrapper();
-        instCh.ge(DbAssetMysqlScanOfflineJobInstance::getCreateTime, dayStart)
-                .lt(DbAssetMysqlScanOfflineJobInstance::getCreateTime, nextDayStart);
+        LambdaQueryWrapper<DbAssetScanOfflineJobInstance> instCh = clickhouseInstanceTypeWrapper();
+        instCh.ge(DbAssetScanOfflineJobInstance::getCreateTime, dayStart)
+                .lt(DbAssetScanOfflineJobInstance::getCreateTime, nextDayStart);
         int batchTaskInstanceTotal = (int) offlineJobInstanceService.count(instCh);
 
         int databaseTotal = (int) clickhouseDatabaseInfoService.count();
@@ -244,17 +244,17 @@ public class OverviewMetricAggregator {
         log.info("aggregate clickhouse overview metrics success, date={}, size={}", metricTime, rows.size());
     }
 
-    private static LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> clickhouseJobTypeWrapper() {
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJob> w = new LambdaQueryWrapper<>();
-        w.and(q -> q.eq(DbAssetMysqlScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE)
-                .or().eq(DbAssetMysqlScanOfflineJob::getDatabaseType, "ClickHouse"));
+    private static LambdaQueryWrapper<DbAssetScanOfflineJob> clickhouseJobTypeWrapper() {
+        LambdaQueryWrapper<DbAssetScanOfflineJob> w = new LambdaQueryWrapper<>();
+        w.and(q -> q.eq(DbAssetScanOfflineJob::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE)
+                .or().eq(DbAssetScanOfflineJob::getDatabaseType, "ClickHouse"));
         return w;
     }
 
-    private static LambdaQueryWrapper<DbAssetMysqlScanOfflineJobInstance> clickhouseInstanceTypeWrapper() {
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJobInstance> w = new LambdaQueryWrapper<>();
-        w.and(q -> q.eq(DbAssetMysqlScanOfflineJobInstance::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE)
-                .or().eq(DbAssetMysqlScanOfflineJobInstance::getDatabaseType, "ClickHouse"));
+    private static LambdaQueryWrapper<DbAssetScanOfflineJobInstance> clickhouseInstanceTypeWrapper() {
+        LambdaQueryWrapper<DbAssetScanOfflineJobInstance> w = new LambdaQueryWrapper<>();
+        w.and(q -> q.eq(DbAssetScanOfflineJobInstance::getDatabaseType, OfflineScanJobDatabaseType.CLICKHOUSE)
+                .or().eq(DbAssetScanOfflineJobInstance::getDatabaseType, "ClickHouse"));
         return w;
     }
 

@@ -5,7 +5,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class DbAssetMysqlScanOfflineJobQueryRequest extends PageRequest {
+public class DbAssetScanOfflineJobQueryRequest extends PageRequest {
 
     private Long id;
 

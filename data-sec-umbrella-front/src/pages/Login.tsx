@@ -28,7 +28,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa' }}>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa', minHeight: 0 }}>
       <Card style={{ width: 420 }}>
         <Title level={4}>系统登录</Title>
         <Form form={form} layout="vertical">

@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import App from '../App';
 import Home from '../pages/Home';
 import DatabaseSecurity from '../pages/DatabaseSecurity';
@@ -230,6 +230,14 @@ const router = createBrowserRouter([
       },
       {
         path: 'admin-center',
+        element: <Navigate to="/admin-center/account" replace />,
+      },
+      {
+        path: 'admin-center/account',
+        element: <AdminCenter />,
+      },
+      {
+        path: 'admin-center/role',
         element: <AdminCenter />,
       },
       {

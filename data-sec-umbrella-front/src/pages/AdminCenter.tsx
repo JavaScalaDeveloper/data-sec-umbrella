@@ -1,13 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Form, Input, Layout, Menu, message, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { adminCenterApi, setAdminAuth } from '../services/api';
 
 const { Content, Sider } = Layout;
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
+
+/** 内置角色说明（与账号表单可选角色一致） */
+const BUILTIN_ROLES = [
+    {
+        roleCode: 'ADMIN',
+        summary: '管理员',
+        capability: '可调用写操作类接口；产品权限范围内管理配置（账号增删改需超级管理员）',
+        products: 'DATABASE / API / MQ（按账号配置 productPermissions）',
+    },
+    {
+        roleCode: 'OPERATOR',
+        summary: '操作员',
+        capability: '默认以只读查询为主，具体以接口权限注解为准',
+        products: 'DATABASE / API / MQ（按账号配置 productPermissions）',
+    },
+];
 
 const AdminCenter: React.FC = () => {
-    const [activeKey, setActiveKey] = useState('account');
+    const location = useLocation();
+    const navigate = useNavigate();
+    const pathTail = location.pathname.replace(/\/$/, '').split('/').pop();
+    const activeSection = pathTail === 'role' ? 'role' : 'account';
+
     const [loggedIn, setLoggedIn] = useState(false);
     const [loginLoading, setLoginLoading] = useState(false);
     const [listLoading, setListLoading] = useState(false);
@@ -44,10 +65,10 @@ const AdminCenter: React.FC = () => {
     };
 
     useEffect(() => {
-        if (loggedIn && activeKey === 'account') {
+        if (loggedIn && activeSection === 'account') {
             fetchAccounts(1, size);
         }
-    }, [loggedIn, activeKey]);
+    }, [loggedIn, activeSection]);
 
     const handleLogin = async () => {
         try {
@@ -156,8 +177,8 @@ const AdminCenter: React.FC = () => {
             <Sider width={220} theme="light">
                 <Menu
                     mode="inline"
-                    selectedKeys={[activeKey]}
-                    onClick={(e) => setActiveKey(e.key)}
+                    selectedKeys={[activeSection]}
+                    onClick={(e) => navigate(`/admin-center/${e.key}`)}
                     items={[
                         { key: 'account', icon: <UserOutlined />, label: '账号管理' },
                         { key: 'role', icon: <TeamOutlined />, label: '角色管理' },
@@ -182,7 +203,7 @@ const AdminCenter: React.FC = () => {
                                 </Button>
                             </Form>
                         </div>
-                    ) : activeKey === 'account' ? (
+                    ) : activeSection === 'account' ? (
                         <Space direction="vertical" style={{ width: '100%' }} size={12}>
                             <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                                 <Text>可配置产品权限：DATABASE/API/MQ；OPERATOR 仅可调用查询接口</Text>
@@ -239,9 +260,27 @@ const AdminCenter: React.FC = () => {
                             />
                         </Space>
                     ) : (
-                        <div style={{ marginTop: 16 }}>
+                        <div style={{ marginTop: 8 }}>
                             <Title level={5}>角色管理</Title>
-                            <Text type="secondary">已预留菜单，后续可扩展角色权限矩阵和角色绑定能力。</Text>
+                            <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+                                当前系统内置两类业务角色（与新建账号时可选角色一致）。权限矩阵与动态角色后续可在此扩展。
+                            </Paragraph>
+                            <Table
+                                rowKey="roleCode"
+                                pagination={false}
+                                dataSource={BUILTIN_ROLES}
+                                columns={[
+                                    {
+                                        title: '角色代码',
+                                        dataIndex: 'roleCode',
+                                        width: 140,
+                                        render: (v: string) => <Tag color="blue">{v}</Tag>,
+                                    },
+                                    { title: '名称', dataIndex: 'summary', width: 120 },
+                                    { title: '能力说明', dataIndex: 'capability' },
+                                    { title: '产品范围', dataIndex: 'products', width: 280 },
+                                ]}
+                            />
                         </div>
                     )}
                 </Content>

@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.manager.task.asset;
 
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJob;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -23,13 +23,13 @@ public class MySQLTableAssetQueryStrategy implements AssetQueryStrategy {
     private final TaskScopeHelper scopeHelper;
 
     @Override
-    public long total(DbAssetMysqlScanOfflineJob job) {
+    public long total(DbAssetScanOfflineJob job) {
         LambdaQueryWrapper<MySQLTableInfo> w = buildWrapper(job);
         return tableInfoService.count(w);
     }
 
     @Override
-    public AssetPage page(DbAssetMysqlScanOfflineJob job, long current, long size) {
+    public AssetPage page(DbAssetScanOfflineJob job, long current, long size) {
         LambdaQueryWrapper<MySQLTableInfo> w = buildWrapper(job);
         Page<MySQLTableInfo> page = new Page<>(current, size);
         IPage<MySQLTableInfo> r = tableInfoService.page(page, w);
@@ -39,7 +39,7 @@ public class MySQLTableAssetQueryStrategy implements AssetQueryStrategy {
         return new AssetPage(r.getTotal(), records);
     }
 
-    private LambdaQueryWrapper<MySQLTableInfo> buildWrapper(DbAssetMysqlScanOfflineJob job) {
+    private LambdaQueryWrapper<MySQLTableInfo> buildWrapper(DbAssetScanOfflineJob job) {
         LambdaQueryWrapper<MySQLTableInfo> w = new LambdaQueryWrapper<>();
         // 扫描范围：all / instance
         String scope = job.getScanScope();

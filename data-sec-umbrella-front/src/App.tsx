@@ -3,6 +3,7 @@ import { Layout, Button, Avatar, Dropdown, Space, message, Typography } from 'an
 import { MenuOutlined, UserOutlined, DatabaseOutlined, ApiOutlined, RocketOutlined, SettingOutlined, HomeOutlined } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import SideDrawer from './components/SideDrawer';
+import SiteFooter from './components/SiteFooter';
 import { adminCenterApi, getAdminAuth, setAdminAuth } from './services/api';
 import './App.css';
 
@@ -17,6 +18,29 @@ const App: React.FC = () => {
 
   const checkLoginState = async () => {
     if (location.pathname === '/login') {
+      return;
+    }
+    // 首页公开访问：不强制跳转登录；若本地有 token 则静默校验用于展示头像
+    if (location.pathname === '/') {
+      const localAuth = getAdminAuth();
+      if (!localAuth) {
+        setAuth(null);
+        return;
+      }
+      setAuth(localAuth);
+      try {
+        const res = await adminCenterApi.current();
+        if (res.code === 200 && res.data) {
+          setAuth(res.data);
+          setAdminAuth(res.data);
+        } else {
+          setAdminAuth(null);
+          setAuth(null);
+        }
+      } catch {
+        setAdminAuth(null);
+        setAuth(null);
+      }
       return;
     }
     const localAuth = getAdminAuth();
@@ -91,9 +115,11 @@ const App: React.FC = () => {
     };
   })();
 
+  const showSiteFooter = location.pathname !== '/';
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center', padding: '0 24px', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+    <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Header style={{ display: 'flex', alignItems: 'center', padding: '0 24px', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)', flexShrink: 0 }}>
         <Button
           type="text"
           icon={<MenuOutlined />}
@@ -125,7 +151,12 @@ const App: React.FC = () => {
           <Button type="primary" onClick={() => navigate('/login')}>登录</Button>
         )}
       </Header>
-      <Outlet />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          <Outlet />
+        </div>
+        {showSiteFooter ? <SiteFooter /> : null}
+      </div>
       <SideDrawer open={drawerOpen} onClose={handleDrawerClose} />
     </Layout>
   );

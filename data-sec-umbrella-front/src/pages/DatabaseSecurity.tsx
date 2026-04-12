@@ -17,7 +17,8 @@ import {
     Modal,
     InputNumber,
     Popconfirm,
-    Tag
+    Tag,
+    Divider,
 } from 'antd';
 
 const {TextArea} = Input;
@@ -48,7 +49,7 @@ import ClickhouseAsset from './data-asset/ClickhouseAsset';
 import DatabaseOverview from './overview/DatabaseOverview';
 
 const {Content, Sider} = Layout;
-const {Title} = Typography;
+const {Title, Text} = Typography;
 const {TabPane} = Tabs;
 const {Option} = Select;
 
@@ -183,7 +184,7 @@ const DatabaseSecurity: React.FC = () => {
                         activeTab === 'clickhouse'
                             ? 'Clickhouse'
                             : (params.dataSourceType !== undefined ? params.dataSourceType : fv.data_source_type) ||
-                              undefined,
+                              'MySQL',
                 });
                 console.log('响应数据:', response);
                 if (response.code === 200) {
@@ -451,7 +452,8 @@ const DatabaseSecurity: React.FC = () => {
         const values = form.getFieldsValue();
         if (activeMenu === '/data-source') {
             const params = {
-                dataSourceType: activeTab === 'clickhouse' ? 'Clickhouse' : values.data_source_type,
+                dataSourceType:
+                    activeTab === 'clickhouse' ? 'Clickhouse' : values.data_source_type || 'MySQL',
                 instance: values.instance,
                 username: values.username,
             };
@@ -1130,10 +1132,10 @@ const DatabaseSecurity: React.FC = () => {
                                     </TabPane>
                                     <TabPane tab="Clickhouse" key="clickhouse">
                                         <Card style={{marginBottom: '24px'}}>
-                                            <div style={{marginBottom: 16, color: 'rgba(0,0,0,0.65)'}}>
+                                            {/*<div style={{marginBottom: 16, color: 'rgba(0,0,0,0.65)'}}>
                                                 仅管理 ClickHouse 类型数据源；实例填写为 <code>host:端口</code>（与 JDBC{' '}
                                                 <code>jdbc:clickhouse://host:端口/default</code> 一致）。
-                                            </div>
+                                            </div>*/}
                                             <Form form={form} layout="inline">
                                                 <Row gutter={16}>
                                                     <Col span={8}>
@@ -1230,67 +1232,118 @@ const DatabaseSecurity: React.FC = () => {
                 </Layout>
             </Layout>
             <Modal
-                title="编辑策略"
+                title={currentPolicy?.id ? '编辑策略' : '新增策略'}
                 open={editModalVisible}
                 onCancel={() => {
                     setEditModalVisible(false);
                     setValidationResult(null);
                 }}
                 onOk={handleEditSubmit}
-                width="100%"
-                footer={[
-                    <Button key="cancel" onClick={() => {
-                        setEditModalVisible(false);
-                        setValidationResult(null);
-                    }}>取消</Button>,
-                    <Button key="submit" type="primary" onClick={handleEditSubmit}>提交</Button>,
-                ]}
+                width={1100}
+                centered
+                destroyOnClose
+                styles={{
+                    body: {
+                        maxHeight: 'calc(100vh - 200px)',
+                        overflowY: 'auto',
+                        paddingTop: 8,
+                        paddingBottom: 8,
+                    },
+                }}
+                footer={(
+                    <div style={{display: 'flex', justifyContent: 'flex-end', gap: 8}}>
+                        <Button
+                            onClick={() => {
+                                setEditModalVisible(false);
+                                setValidationResult(null);
+                            }}
+                        >
+                            取消
+                        </Button>
+                        <Button type="primary" onClick={handleEditSubmit}>
+                            提交
+                        </Button>
+                    </div>
+                )}
             >
-                <Form form={editForm} layout="vertical">
+                <Form
+                    form={editForm}
+                    layout="horizontal"
+                    size="small"
+                    labelCol={{flex: '0 0 100px'}}
+                    wrapperCol={{flex: '1 1 auto'}}
+                    labelAlign="right"
+                >
+                    <Row gutter={[12, 4]}>
+                        <Col xs={24} md={12}>
+                            <Form.Item
+                                name="policyCode"
+                                label="策略 Code"
+                                rules={[{required: true, message: '请输入策略 Code'}]}
+                            >
+                                <Input placeholder="唯一标识" disabled={!!currentPolicy?.id}/>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item
+                                name="policyName"
+                                label="策略名称"
+                                rules={[{required: true, message: '请输入策略名称'}]}
+                            >
+                                <Input placeholder="策略名称"/>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} lg={12}>
+                            <Form.Item
+                                name="sensitivityLevel"
+                                label="敏感等级"
+                                rules={[{required: true, message: '请选择敏感等级'}]}
+                            >
+                                <Select placeholder="等级" allowClear={false}>
+                                    <Option value={1}>1-低</Option>
+                                    <Option value={2}>2-中低</Option>
+                                    <Option value={3}>3-中</Option>
+                                    <Option value={4}>4-中高</Option>
+                                    <Option value={5}>5-高</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} lg={12}>
+                            <Form.Item
+                                name="hideExample"
+                                label="隐藏样例"
+                                rules={[{required: true, message: '请选择是否隐藏样例'}]}
+                            >
+                                <Select placeholder="是否隐藏" allowClear={false}>
+                                    <Option value={0}>否</Option>
+                                    <Option value={1}>是</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="description" label="描述" style={{marginBottom: 12}}>
+                        <Input placeholder="策略说明（选填）" maxLength={500} showCount allowClear/>
+                    </Form.Item>
+
+                    <Divider plain style={{margin: '12px 0 8px', fontSize: 13}}>
+                        分类规则
+                    </Divider>
                     <Form.Item
-                        name="policyCode"
-                        label="策略Code"
-                        rules={[{required: true, message: '请输入策略Code'}]}
+                        label=" "
+                        colon={false}
+                        required
+                        style={{marginBottom: 8}}
+                        labelCol={{flex: '0 0 100px'}}
+                        wrapperCol={{flex: '1 1 auto'}}
                     >
-                        <Input placeholder="请输入策略Code" disabled={!!currentPolicy?.id}/>
-                    </Form.Item>
-                    <Form.Item
-                        name="policyName"
-                        label="策略名称"
-                        rules={[{required: true, message: '请输入策略名称'}]}
-                    >
-                        <Input placeholder="请输入策略名称"/>
-                    </Form.Item>
-                    <Form.Item name="description" label="描述">
-                        <TextArea placeholder="请输入描述" rows={4}/>
-                    </Form.Item>
-                    <Form.Item
-                        name="sensitivityLevel"
-                        label="敏感等级"
-                        rules={[{required: true, message: '请选择敏感等级'}]}
-                    >
-                        <Select placeholder="请选择敏感等级">
-                            <Option value={1}>1-低</Option>
-                            <Option value={2}>2-中低</Option>
-                            <Option value={3}>3-中</Option>
-                            <Option value={4}>4-中高</Option>
-                            <Option value={5}>5-高</Option>
-                        </Select>
-                    </Form.Item>
-                    <Form.Item
-                        name="hideExample"
-                        label="隐藏样例"
-                        rules={[{required: true, message: '请选择是否隐藏样例'}]}
-                    >
-                        <Select placeholder="请选择是否隐藏样例">
-                            <Option value={0}>否</Option>
-                            <Option value={1}>是</Option>
-                        </Select>
-                    </Form.Item>
-                    <Form.Item label="分类规则" required>
-                        <div style={{marginBottom: 16}}>
-                            <Button type="primary" onClick={addRule} icon={<PlusOutlined/>}>添加规则</Button>
-                        </div>
+                        <Space size="small" wrap style={{marginBottom: 8}}>
+                            <Button type="primary" size="small" onClick={addRule} icon={<PlusOutlined/>}>
+                                添加规则
+                            </Button>
+                            <Text type="secondary" style={{fontSize: 12}}>
+                                至少一条；表格内可直接编辑
+                            </Text>
+                        </Space>
                         <Table
                             columns={[
                                 {
@@ -1309,6 +1362,8 @@ const DatabaseSecurity: React.FC = () => {
                                             name={`rules[${record.id}].conditionObject`}
                                             rules={[{required: true, message: '请选择条件对象'}]}
                                             style={{margin: 0}}
+                                            labelCol={{span: 0}}
+                                            wrapperCol={{span: 24}}
                                         >
                                             <Select
                                                 value={record.conditionObject}
@@ -1336,6 +1391,8 @@ const DatabaseSecurity: React.FC = () => {
                                             name={`rules[${record.id}].conditionType`}
                                             rules={[{required: true, message: '请选择条件类型'}]}
                                             style={{margin: 0}}
+                                            labelCol={{span: 0}}
+                                            wrapperCol={{span: 24}}
                                         >
                                             <Select
                                                 value={record.conditionType}
@@ -1373,6 +1430,8 @@ const DatabaseSecurity: React.FC = () => {
                                             name={`rules[${record.id}].expression`}
                                             rules={[{required: true, message: '请输入表达式'}]}
                                             style={{margin: 0}}
+                                            labelCol={{span: 0}}
+                                            wrapperCol={{span: 24}}
                                         >
                                             <Input
                                                 value={record.expression}
@@ -1416,6 +1475,8 @@ const DatabaseSecurity: React.FC = () => {
                             rowKey="id"
                             pagination={false}
                             size="small"
+                            bordered
+                            scroll={{x: 720}}
                         />
                         <Form.Item
                             name="classificationRulesCount"
@@ -1432,101 +1493,120 @@ const DatabaseSecurity: React.FC = () => {
                             <Input type="hidden"/>
                         </Form.Item>
                     </Form.Item>
-                    <Form.Item
-                        name="ruleExpression"
-                        label="规则表达式"
-                        rules={[{required: true, whitespace: true, message: '请输入规则表达式'}]}
-                    >
-                        <TextArea placeholder="请输入规则表达式" rows={4}/>
-                    </Form.Item>
-                    <Form.Item
-                        name="aiRule"
-                        label="AI规则"
-                        rules={[{required: true, whitespace: true, message: '请输入AI规则'}]}
-                    >
-                        <TextArea placeholder="请输入AI规则" rows={4}/>
-                    </Form.Item>
-                    <Form.Item label="验证数据">
-                        <div style={{marginBottom: '16px'}}>
-                            {/* 基本信息输入区域 */}
-                            <Row gutter={16} style={{marginBottom: '16px'}}>
-                                <Col span={8}>
-                                    <Form.Item label="库名">
+
+                    <Divider plain style={{margin: '16px 0 8px', fontSize: 13}}>
+                        规则与 AI
+                    </Divider>
+                    <Row gutter={[12, 8]}>
+                        <Col xs={24} lg={12}>
+                            <Form.Item
+                                name="ruleExpression"
+                                label="规则表达式"
+                                rules={[{required: true, whitespace: true, message: '请输入规则表达式'}]}
+                                style={{marginBottom: 8}}
+                            >
+                                <TextArea placeholder="规则表达式" rows={1} showCount maxLength={8000}/>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} lg={12}>
+                            <Form.Item
+                                name="aiRule"
+                                label="AI 规则"
+                                rules={[{required: true, whitespace: true, message: '请输入 AI 规则'}]}
+                                style={{marginBottom: 8}}
+                            >
+                                <TextArea placeholder="AI 规则描述" rows={1} showCount maxLength={8000}/>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Divider plain style={{margin: '12px 0 8px', fontSize: 13}}>
+                        验证数据（规则检测用）
+                    </Divider>
+                    <Form.Item label=" " colon={false} style={{marginBottom: 8}}>
+                        <div>
+                            <Row gutter={[10, 4]} style={{marginBottom: 8}}>
+                                <Col xs={24} sm={12} xl={8}>
+                                    <Form.Item label="库名" style={{marginBottom: 4}} labelCol={{flex: '0 0 72px'}} wrapperCol={{flex: '1 1 auto'}}>
                                         <Input
+                                            size="small"
                                             value={detectionSamples[0]?.databaseName}
                                             onChange={(e) => {
                                                 const newData = [...detectionSamples];
                                                 newData[0].databaseName = e.target.value;
                                                 setDetectionSamples(newData);
                                             }}
-                                            placeholder="请输入库名"
+                                            placeholder="库名"
                                         />
                                     </Form.Item>
                                 </Col>
-                                <Col span={8}>
-                                    <Form.Item label="库描述">
+                                <Col xs={24} sm={12} xl={8}>
+                                    <Form.Item label="库描述" style={{marginBottom: 4}} labelCol={{flex: '0 0 72px'}} wrapperCol={{flex: '1 1 auto'}}>
                                         <Input
+                                            size="small"
                                             value={detectionSamples[0]?.databaseDescription}
                                             onChange={(e) => {
                                                 const newData = [...detectionSamples];
                                                 newData[0].databaseDescription = e.target.value;
                                                 setDetectionSamples(newData);
                                             }}
-                                            placeholder="请输入库描述"
+                                            placeholder="库描述"
                                         />
                                     </Form.Item>
                                 </Col>
-                                <Col span={8}>
-                                    <Form.Item label="表名">
+                                <Col xs={24} sm={12} xl={8}>
+                                    <Form.Item label="表名" style={{marginBottom: 4}} labelCol={{flex: '0 0 72px'}} wrapperCol={{flex: '1 1 auto'}}>
                                         <Input
+                                            size="small"
                                             value={detectionSamples[0]?.tableName}
                                             onChange={(e) => {
                                                 const newData = [...detectionSamples];
                                                 newData[0].tableName = e.target.value;
                                                 setDetectionSamples(newData);
                                             }}
-                                            placeholder="请输入表名"
+                                            placeholder="表名"
                                         />
                                     </Form.Item>
                                 </Col>
-                            </Row>
-                            <Row gutter={16} style={{marginBottom: '16px'}}>
-                                <Col span={8}>
-                                    <Form.Item label="表描述">
+                                <Col xs={24} sm={12} xl={8}>
+                                    <Form.Item label="表描述" style={{marginBottom: 4}} labelCol={{flex: '0 0 72px'}} wrapperCol={{flex: '1 1 auto'}}>
                                         <Input
+                                            size="small"
                                             value={detectionSamples[0]?.tableDescription}
                                             onChange={(e) => {
                                                 const newData = [...detectionSamples];
                                                 newData[0].tableDescription = e.target.value;
                                                 setDetectionSamples(newData);
                                             }}
-                                            placeholder="请输入表描述"
+                                            placeholder="表描述"
                                         />
                                     </Form.Item>
                                 </Col>
-                                <Col span={8}>
-                                    <Form.Item label="列名">
+                                <Col xs={24} sm={12} xl={8}>
+                                    <Form.Item label="列名" style={{marginBottom: 4}} labelCol={{flex: '0 0 72px'}} wrapperCol={{flex: '1 1 auto'}}>
                                         <Input
+                                            size="small"
                                             value={detectionSamples[0]?.columnName}
                                             onChange={(e) => {
                                                 const newData = [...detectionSamples];
                                                 newData[0].columnName = e.target.value;
                                                 setDetectionSamples(newData);
                                             }}
-                                            placeholder="请输入列名"
+                                            placeholder="列名"
                                         />
                                     </Form.Item>
                                 </Col>
-                                <Col span={8}>
-                                    <Form.Item label="列描述">
+                                <Col xs={24} sm={12} xl={8}>
+                                    <Form.Item label="列描述" style={{marginBottom: 4}} labelCol={{flex: '0 0 72px'}} wrapperCol={{flex: '1 1 auto'}}>
                                         <Input
+                                            size="small"
                                             value={detectionSamples[0]?.columnDescription}
                                             onChange={(e) => {
                                                 const newData = [...detectionSamples];
                                                 newData[0].columnDescription = e.target.value;
                                                 setDetectionSamples(newData);
                                             }}
-                                            placeholder="请输入列描述"
+                                            placeholder="列描述"
                                         />
                                     </Form.Item>
                                 </Col>
@@ -1555,7 +1635,7 @@ const DatabaseSecurity: React.FC = () => {
                                                                 setDetectionSamples(newData);
                                                             }}
                                                             placeholder="请输入列值"
-                                                            rows={2}
+                                                            rows={1}
                                                             style={{marginRight: '8px', flex: 1}}
                                                         />
                                                         {columnValues.length > 1 && (
@@ -1595,11 +1675,13 @@ const DatabaseSecurity: React.FC = () => {
                             />
                         </div>
                     </Form.Item>
-                    <Form.Item>
-                        <Button
-                            type="primary"
-                            icon={<PlayCircleOutlined/>}
-                            onClick={async () => {
+                    <Form.Item label=" " colon={false} style={{marginBottom: 8}}>
+                        <Space wrap>
+                            <Button
+                                type="primary"
+                                size="small"
+                                icon={<PlayCircleOutlined/>}
+                                onClick={async () => {
                                 try {
                                     await editForm.validateFields([
                                         'classificationRulesCount',
@@ -1622,12 +1704,20 @@ const DatabaseSecurity: React.FC = () => {
 
                                 await runRuleDetection();
                             }}
-                        >
-                            规则检测
-                        </Button>
+                            >
+                                规则检测
+                            </Button>
+                            <Text type="secondary" style={{fontSize: 12}}>
+                                将校验分类规则、规则表达式与下方样例数据
+                            </Text>
+                        </Space>
                     </Form.Item>
                     {validationResult && (
-                        <Card title="验证结果" size="small">
+                        <Card
+                            title="验证结果"
+                            size="small"
+                            styles={{body: {padding: '12px 16px'}}}
+                        >
                             <Row gutter={[16, 16]}>
                                 <Col xs={24} md={12}>
                                     <div style={{paddingRight: 8}}>
@@ -1805,7 +1895,7 @@ const DatabaseSecurity: React.FC = () => {
                         name="extendInfo"
                         label="拓展信息"
                     >
-                        <TextArea placeholder="请输入拓展信息（JSON字符串）" rows={4}/>
+                        <TextArea placeholder="请输入拓展信息（JSON字符串）" rows={1}/>
                     </Form.Item>
                 </Form>
             </Modal>

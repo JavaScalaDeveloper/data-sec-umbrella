@@ -1,7 +1,7 @@
 package com.arelore.data.sec.umbrella.server.manager.task.asset;
 
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.ClickhouseTableInfo;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJob;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJob;
 import com.arelore.data.sec.umbrella.server.core.service.ClickhouseTableInfoService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -23,13 +23,13 @@ public class ClickhouseTableAssetQueryStrategy implements AssetQueryStrategy {
     private final TaskScopeHelper scopeHelper;
 
     @Override
-    public long total(DbAssetMysqlScanOfflineJob job) {
+    public long total(DbAssetScanOfflineJob job) {
         LambdaQueryWrapper<ClickhouseTableInfo> w = buildWrapper(job);
         return tableInfoService.count(w);
     }
 
     @Override
-    public AssetPage page(DbAssetMysqlScanOfflineJob job, long current, long size) {
+    public AssetPage page(DbAssetScanOfflineJob job, long current, long size) {
         LambdaQueryWrapper<ClickhouseTableInfo> w = buildWrapper(job);
         Page<ClickhouseTableInfo> page = new Page<>(current, size);
         IPage<ClickhouseTableInfo> r = tableInfoService.page(page, w);
@@ -39,7 +39,7 @@ public class ClickhouseTableAssetQueryStrategy implements AssetQueryStrategy {
         return new AssetPage(r.getTotal(), records);
     }
 
-    private LambdaQueryWrapper<ClickhouseTableInfo> buildWrapper(DbAssetMysqlScanOfflineJob job) {
+    private LambdaQueryWrapper<ClickhouseTableInfo> buildWrapper(DbAssetScanOfflineJob job) {
         LambdaQueryWrapper<ClickhouseTableInfo> w = new LambdaQueryWrapper<>();
         String scope = job.getScanScope();
         if (StringUtils.hasText(scope) && "instance".equalsIgnoreCase(scope.trim())) {

@@ -10,11 +10,11 @@ import lombok.Data;
 import java.util.Date;
 
 /**
- * MySQL 数据资产离线扫描任务
+ * 数据资产离线扫描任务（表 {@code db_asset_scan_offline_job}，MySQL/ClickHouse 由 {@code database_type} 区分）
  */
 @Data
-@TableName("db_asset_mysql_scan_offline_job")
-public class DbAssetMysqlScanOfflineJob {
+@TableName("db_asset_scan_offline_job")
+public class DbAssetScanOfflineJob {
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;

@@ -13,8 +13,8 @@ import java.util.Date;
  * 离线扫描任务执行实例
  */
 @Data
-@TableName("db_asset_mysql_scan_offline_job_instance")
-public class DbAssetMysqlScanOfflineJobInstance {
+@TableName("db_asset_scan_offline_job_instance")
+public class DbAssetScanOfflineJobInstance {
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;

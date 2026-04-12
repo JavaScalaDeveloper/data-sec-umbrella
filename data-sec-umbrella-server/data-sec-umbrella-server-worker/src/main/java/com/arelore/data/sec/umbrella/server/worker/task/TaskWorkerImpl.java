@@ -4,9 +4,9 @@ import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineScanSensitivitySnapshotMessage;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineScanSnapshotUniqueKey;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobInstanceService;
 import com.arelore.data.sec.umbrella.server.worker.ai.OfflineAiScanSupport;
 import com.arelore.data.sec.umbrella.server.worker.config.TaskWorkerExecutorBeans;
 import com.arelore.data.sec.umbrella.server.worker.executor.TaskWorkerExecutorManager;
@@ -44,7 +44,7 @@ public class TaskWorkerImpl implements OfflineScanTaskProcessor {
     private StringRedisTemplate stringRedisTemplate;
 
     @Autowired
-    private DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
+    private DbAssetScanOfflineJobInstanceService jobInstanceService;
 
     @Autowired
     private OfflineScanSnapshotPublisher offlineScanSnapshotPublisher;
@@ -216,7 +216,7 @@ public class TaskWorkerImpl implements OfflineScanTaskProcessor {
         if (instanceId == null) {
             return;
         }
-        DbAssetMysqlScanOfflineJobInstance inst = jobInstanceService.getById(instanceId);
+        DbAssetScanOfflineJobInstance inst = jobInstanceService.getById(instanceId);
         if (inst == null) {
             return;
         }

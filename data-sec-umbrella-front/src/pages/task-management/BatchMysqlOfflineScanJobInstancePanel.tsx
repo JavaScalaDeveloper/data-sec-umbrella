@@ -86,6 +86,21 @@ const parseColumnDetailsPayload = (raw: string): { rows: SnapshotColumnDetailRow
     }
 };
 
+/** 列详情弹窗：按敏感等级 1–5 排序，「-」与非法值在升序时排在末尾 */
+function compareSnapshotColumnSensitivity(a: string, b: string): number {
+    const rank = (v: string) => {
+        if (v == null || v === '' || v === '-') {
+            return 999;
+        }
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= 1 && n <= 5) {
+            return n;
+        }
+        return 999;
+    };
+    return rank(a) - rank(b);
+}
+
 export type BatchOfflineScanJobInstancePanelVariant = 'mysql' | 'clickhouse';
 
 const BatchMysqlOfflineScanJobInstancePanel: React.FC<{variant?: BatchOfflineScanJobInstancePanelVariant}> = ({
@@ -284,7 +299,15 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC<{variant?: BatchOfflineSca
 
     const columnDetailModalColumns: ColumnsType<SnapshotColumnDetailRow> = [
         {title: '列名', dataIndex: 'columnName', key: 'columnName', width: 160, ellipsis: true},
-        {title: '敏感等级', dataIndex: 'sensitivityLevel', key: 'sensitivityLevel', width: 100},
+        {
+            title: '敏感等级',
+            dataIndex: 'sensitivityLevel',
+            key: 'sensitivityLevel',
+            width: 100,
+            sorter: (a, b) => compareSnapshotColumnSensitivity(a.sensitivityLevel, b.sensitivityLevel),
+            sortDirections: ['descend', 'ascend'],
+            showSorterTooltip: true,
+        },
         {
             title: '敏感标签',
             dataIndex: 'sensitivityTags',
@@ -313,7 +336,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC<{variant?: BatchOfflineSca
         dataIndex: 'uniqueKey',
         key: 'uniqueKey',
         ellipsis: true,
-        width: 260,
+        width: 200,
         render: (v: string) => (
             <Tooltip title={v || '-'} placement="topLeft">
                 <span style={{cursor: 'default'}}>{v || '-'}</span>
@@ -322,13 +345,13 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC<{variant?: BatchOfflineSca
     };
 
     const snapshotTableColumns: ColumnsType<any> = [
-        {title: '事件时间', dataIndex: 'eventTime', width: 100},
+        {title: '事件时间', dataIndex: 'eventTime', width: 80},
         uniqueKeyColumn,
-        {title: '敏感等级', dataIndex: 'sensitivityLevel', width: 100},
+        {title: '敏感等级', dataIndex: 'sensitivityLevel', width: 40},
         {
             title: '敏感标签',
             dataIndex: 'sensitivityTags',
-            width: 220,
+            width: 180,
             render: (_: unknown, r: any) => renderTagList(r.sensitivityTags),
         },
         {
@@ -530,7 +553,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC<{variant?: BatchOfflineSca
                         </Button>
                     </Space>
                     <div style={{marginTop: 8, color: '#888', fontSize: 12}}>
-                        数据源 engine 由服务端根据任务实例解析（与本次扫描资产类型一致），无需选择。
+                        快照默认仅保留约 180 天，具体以存储快照的表生命周期（TTL）策略为准；超期数据将自动清理。
                     </div>
                 </div>
                 <Tabs

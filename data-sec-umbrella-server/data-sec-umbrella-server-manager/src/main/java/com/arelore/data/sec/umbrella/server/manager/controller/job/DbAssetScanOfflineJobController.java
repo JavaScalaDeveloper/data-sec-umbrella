@@ -2,19 +2,19 @@ package com.arelore.data.sec.umbrella.server.manager.controller.job;
 
 import com.arelore.data.sec.umbrella.server.core.common.Result;
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobIdRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobInstanceQueryRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobQueryRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobSaveRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetScanOfflineJobIdRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetScanOfflineJobInstanceQueryRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetScanOfflineJobQueryRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetScanOfflineJobSaveRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.OfflineScanInstanceSnapshotDetailRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.response.DbAssetMysqlScanOfflineJobResponse;
+import com.arelore.data.sec.umbrella.server.core.dto.response.DbAssetScanOfflineJobResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.OfflineScanSnapshotDetailResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
 import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
-import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobInstanceService;
+import com.arelore.data.sec.umbrella.server.core.service.DbAssetScanOfflineJobService;
 import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotAssetEngineResolver;
 import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotQueryService;
 import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
@@ -30,22 +30,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * MySQL 数据资产离线扫描任务（仅 MySQL 引擎任务与实例）
+ * MySQL 离线扫描任务 HTTP 入口；数据存于 {@code db_asset_scan_offline_job} / {@code db_asset_scan_offline_job_instance}，
+ * 通过 {@code database_type} 与 ClickHouse 任务区分。
  */
 @RestController
 @RequestMapping("api/db-asset/mysql/offline-scan-job")
 @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.READ)
-public class DbAssetMysqlScanOfflineJobController {
+public class DbAssetScanOfflineJobController {
 
-    private final DbAssetMysqlScanOfflineJobService offlineScanJobService;
-    private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
+    private final DbAssetScanOfflineJobService offlineScanJobService;
+    private final DbAssetScanOfflineJobInstanceService jobInstanceService;
     private final TaskManager taskManager;
     private final OfflineScanSnapshotQueryService offlineScanSnapshotQueryService;
     private final RedisTaskCacheUtil redisTaskCacheUtil;
 
     @Autowired
-    public DbAssetMysqlScanOfflineJobController(DbAssetMysqlScanOfflineJobService offlineScanJobService,
-                                                DbAssetMysqlScanOfflineJobInstanceService jobInstanceService,
+    public DbAssetScanOfflineJobController(DbAssetScanOfflineJobService offlineScanJobService,
+                                                DbAssetScanOfflineJobInstanceService jobInstanceService,
                                                 TaskManager taskManager,
                                                 OfflineScanSnapshotQueryService offlineScanSnapshotQueryService,
                                                 RedisTaskCacheUtil redisTaskCacheUtil) {
@@ -57,15 +58,15 @@ public class DbAssetMysqlScanOfflineJobController {
     }
 
     @PostMapping("/list")
-    public Result<PageResponse<DbAssetMysqlScanOfflineJobResponse>> list(@RequestBody DbAssetMysqlScanOfflineJobQueryRequest request) {
+    public Result<PageResponse<DbAssetScanOfflineJobResponse>> list(@RequestBody DbAssetScanOfflineJobQueryRequest request) {
         request.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
         return Result.success(offlineScanJobService.getPage(request));
     }
 
     @PostMapping("/instance/list")
-    public Result<PageResponse<DbAssetMysqlScanOfflineJobInstance>> listInstances(@RequestBody DbAssetMysqlScanOfflineJobInstanceQueryRequest request) {
+    public Result<PageResponse<DbAssetScanOfflineJobInstance>> listInstances(@RequestBody DbAssetScanOfflineJobInstanceQueryRequest request) {
         request.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
-        IPage<DbAssetMysqlScanOfflineJobInstance> pageResult = jobInstanceService.pageQuery(request);
+        IPage<DbAssetScanOfflineJobInstance> pageResult = jobInstanceService.pageQuery(request);
         return Result.success(new PageResponse<>(
                 pageResult.getRecords(),
                 pageResult.getTotal(),
@@ -87,7 +88,7 @@ public class DbAssetMysqlScanOfflineJobController {
         if (!"RULE".equals(scanKind) && !"AI".equals(scanKind)) {
             return Result.error("scanKind 仅支持 RULE 或 AI");
         }
-        DbAssetMysqlScanOfflineJobInstance inst = jobInstanceService.getById(request.getId());
+        DbAssetScanOfflineJobInstance inst = jobInstanceService.getById(request.getId());
         if (inst == null) {
             return Result.error("实例不存在");
         }
@@ -105,11 +106,11 @@ public class DbAssetMysqlScanOfflineJobController {
     }
 
     @PostMapping("/getById")
-    public Result<DbAssetMysqlScanOfflineJobResponse> getById(@RequestBody DbAssetMysqlScanOfflineJobIdRequest request) {
+    public Result<DbAssetScanOfflineJobResponse> getById(@RequestBody DbAssetScanOfflineJobIdRequest request) {
         if (request.getId() == null) {
             return Result.error("id不能为空");
         }
-        DbAssetMysqlScanOfflineJobResponse data = offlineScanJobService.getById(request.getId());
+        DbAssetScanOfflineJobResponse data = offlineScanJobService.getById(request.getId());
         if (data == null || !OfflineScanJobDatabaseType.MYSQL.equals(OfflineScanJobDatabaseType.normalizeJob(data.getDatabaseType()))) {
             return Result.error("任务不存在");
         }
@@ -118,7 +119,7 @@ public class DbAssetMysqlScanOfflineJobController {
 
     @PostMapping("/create")
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
-    public Result<Long> create(@RequestBody DbAssetMysqlScanOfflineJobSaveRequest request) {
+    public Result<Long> create(@RequestBody DbAssetScanOfflineJobSaveRequest request) {
         try {
             request.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
             Long id = offlineScanJobService.create(request);
@@ -130,7 +131,7 @@ public class DbAssetMysqlScanOfflineJobController {
 
     @PostMapping("/update")
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
-    public Result<Boolean> update(@RequestBody DbAssetMysqlScanOfflineJobSaveRequest request) {
+    public Result<Boolean> update(@RequestBody DbAssetScanOfflineJobSaveRequest request) {
         try {
             request.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
             boolean ok = offlineScanJobService.update(request);
@@ -145,11 +146,11 @@ public class DbAssetMysqlScanOfflineJobController {
 
     @PostMapping("/delete")
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
-    public Result<Boolean> delete(@RequestBody DbAssetMysqlScanOfflineJobIdRequest request) {
+    public Result<Boolean> delete(@RequestBody DbAssetScanOfflineJobIdRequest request) {
         if (request.getId() == null) {
             return Result.error("id不能为空");
         }
-        DbAssetMysqlScanOfflineJobResponse data = offlineScanJobService.getById(request.getId());
+        DbAssetScanOfflineJobResponse data = offlineScanJobService.getById(request.getId());
         if (data == null || !OfflineScanJobDatabaseType.MYSQL.equals(OfflineScanJobDatabaseType.normalizeJob(data.getDatabaseType()))) {
             return Result.error("任务不存在");
         }
@@ -162,7 +163,7 @@ public class DbAssetMysqlScanOfflineJobController {
 
     @PostMapping("/execute")
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
-    public Result<Long> execute(@RequestBody DbAssetMysqlScanOfflineJobIdRequest request) {
+    public Result<Long> execute(@RequestBody DbAssetScanOfflineJobIdRequest request) {
         try {
             Long instanceId = offlineScanJobService.execute(request, OfflineScanJobDatabaseType.MYSQL);
             if (instanceId == null) {
@@ -177,11 +178,11 @@ public class DbAssetMysqlScanOfflineJobController {
 
     @PostMapping("/instance/stop")
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
-    public Result<Boolean> stopInstance(@RequestBody DbAssetMysqlScanOfflineJobIdRequest request) {
+    public Result<Boolean> stopInstance(@RequestBody DbAssetScanOfflineJobIdRequest request) {
         if (request.getId() == null) {
             return Result.error("id不能为空");
         }
-        DbAssetMysqlScanOfflineJobInstance inst = jobInstanceService.getById(request.getId());
+        DbAssetScanOfflineJobInstance inst = jobInstanceService.getById(request.getId());
         if (inst == null) {
             return Result.error("实例不存在");
         }
