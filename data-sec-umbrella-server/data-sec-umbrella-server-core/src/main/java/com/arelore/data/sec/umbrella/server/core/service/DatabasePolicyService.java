@@ -2,70 +2,44 @@ package com.arelore.data.sec.umbrella.server.core.service;
 
 import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyRuleDetectionRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyResponse;
-import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
+import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyRuleDetectionResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 
 import java.util.List;
 
 /**
- * <p>
  * 数据库策略表 服务类
- * </p>
- *
- * @author arelore
- * @since 2025-12-24
  */
 public interface DatabasePolicyService {
 
-    /**
-     * 分页获取数据库策略
-     */
     PageResponse<DatabasePolicyResponse> getPage(DatabasePolicyQueryRequest request);
 
-    /**
-     * 获取所有数据库策略
-     */
     List<DatabasePolicyResponse> getAll();
 
-    /**
-     * 根据ID获取数据库策略
-     */
     DatabasePolicyResponse getById(Long id);
 
-    /**
-     * 根据策略编码获取数据库策略
-     */
     DatabasePolicyResponse getByPolicyCode(String policyCode);
 
-    /**
-     * 创建数据库策略
-     */
     Long create(DatabasePolicyRequest databasePolicyRequest);
 
-    /**
-     * 更新数据库策略
-     */
     boolean update(Long id, DatabasePolicyRequest databasePolicyRequest);
 
-    /**
-     * 删除数据库策略
-     */
     boolean delete(Long id);
 
     /**
-     * 测试规则
+     * 规则检测：分类规则 + 规则表达式 + AI（一次调用完成）。
      */
-    DatabasePolicyTestRulesResponse testRules(DatabasePolicyTestRulesRequest request);
+    DatabasePolicyRuleDetectionResponse executeRuleDetection(DatabasePolicyRuleDetectionRequest request);
 
     /**
-     * 仅测试分类规则与规则表达式（不调用AI）。
+     * 规则检测：仅分类规则与规则表达式（不调用 LLM）。
      */
-    DatabasePolicyTestRulesResponse testRulesOnly(DatabasePolicyTestRulesRequest request);
+    DatabasePolicyRuleDetectionResponse executeStructuredRuleDetection(DatabasePolicyRuleDetectionRequest request);
 
     /**
-     * 仅测试AI规则。
+     * 规则检测：仅 AI 规则（调用 LLM）。
      */
-    DatabasePolicyTestRulesResponse testAiRule(DatabasePolicyTestRulesRequest request);
+    DatabasePolicyRuleDetectionResponse executeAiRuleDetection(DatabasePolicyRuleDetectionRequest request);
 }

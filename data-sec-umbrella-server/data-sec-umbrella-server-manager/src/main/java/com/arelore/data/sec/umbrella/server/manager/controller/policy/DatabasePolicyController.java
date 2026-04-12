@@ -3,9 +3,9 @@ package com.arelore.data.sec.umbrella.server.manager.controller.policy;
 import com.arelore.data.sec.umbrella.server.core.common.Result;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyRuleDetectionRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyResponse;
-import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
+import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyRuleDetectionResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
 import com.arelore.data.sec.umbrella.server.manager.service.DatabasePolicyStreamService;
@@ -91,14 +91,20 @@ public class DatabasePolicyController {
         return Result.error("删除失败，策略不存在");
     }
 
-    @PostMapping("/test-rules")
-    public Result<DatabasePolicyTestRulesResponse> testRules(@RequestBody DatabasePolicyTestRulesRequest request) {
-        DatabasePolicyTestRulesResponse response = databasePolicyService.testRulesOnly(request);
+    /**
+     * 规则检测：分类规则 + 规则表达式（不调用 LLM）。
+     */
+    @PostMapping("/rule-detection")
+    public Result<DatabasePolicyRuleDetectionResponse> ruleDetection(@RequestBody DatabasePolicyRuleDetectionRequest request) {
+        DatabasePolicyRuleDetectionResponse response = databasePolicyService.executeStructuredRuleDetection(request);
         return Result.success(response);
     }
 
-    @PostMapping(value = "/test-ai-rules-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter testAiRulesStream(@RequestBody DatabasePolicyTestRulesRequest request) {
-        return databasePolicyStreamService.testAiRulesStream(request);
+    /**
+     * 规则检测：AI 规则流式输出（SSE）。
+     */
+    @PostMapping(value = "/rule-detection-ai-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter ruleDetectionAiStream(@RequestBody DatabasePolicyRuleDetectionRequest request) {
+        return databasePolicyStreamService.streamAiRuleDetection(request);
     }
 }

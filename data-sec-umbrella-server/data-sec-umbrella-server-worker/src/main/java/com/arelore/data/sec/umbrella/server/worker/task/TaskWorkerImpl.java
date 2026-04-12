@@ -1,20 +1,21 @@
 package com.arelore.data.sec.umbrella.server.worker.task;
 
 import com.alibaba.fastjson2.JSON;
-import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanConstants;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineScanSensitivitySnapshotMessage;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineScanSnapshotUniqueKey;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
+import com.arelore.data.sec.umbrella.server.worker.ai.OfflineAiScanSupport;
+import com.arelore.data.sec.umbrella.server.worker.config.TaskWorkerExecutorBeans;
 import com.arelore.data.sec.umbrella.server.worker.executor.TaskWorkerExecutorManager;
 import com.arelore.data.sec.umbrella.server.worker.mq.OfflineScanSnapshotPublisher;
 import com.arelore.data.sec.umbrella.server.worker.scanner.AssetScanResult;
 import com.arelore.data.sec.umbrella.server.worker.scanner.AssetScanner;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -24,7 +25,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 @Service("offlineRuleScanTaskProcessor")
 /**
  * Worker 任务执行实现，负责扫描路由、分布式计数与实例状态同步。
@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TaskWorkerImpl implements OfflineScanTaskProcessor {
 
     @Autowired
+    @Qualifier(TaskWorkerExecutorBeans.RULE_SCAN_EXECUTOR)
     private TaskWorkerExecutorManager executorManager;
 
     @Autowired
@@ -44,9 +45,6 @@ public class TaskWorkerImpl implements OfflineScanTaskProcessor {
 
     @Autowired
     private DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
-
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
 
     @Autowired
     private OfflineScanSnapshotPublisher offlineScanSnapshotPublisher;
@@ -77,7 +75,7 @@ public class TaskWorkerImpl implements OfflineScanTaskProcessor {
             return;
         }
         for (Map<String, Object> asset : assets) {
-            String type = String.valueOf(asset.getOrDefault("databaseType", "MySQL"));
+            String type = OfflineAiScanSupport.resolveDatabaseType(asset, payload);
             AssetScanner scanner = scannerMap.getOrDefault(type, scannerMap.get("MySQL"));
             try {
                 if (scanner == null) {
@@ -90,7 +88,6 @@ public class TaskWorkerImpl implements OfflineScanTaskProcessor {
                     incrementRedis(instanceId, "sensitive");
                 }
                 publishRuleScanSnapshot(payload, asset, result);
-                dispatchAiScanIfNeeded(payload, asset, result);
             } catch (Exception ex) {
                 incrementRedis(instanceId, "fail");
             }
@@ -107,7 +104,7 @@ public class TaskWorkerImpl implements OfflineScanTaskProcessor {
         String tableName = str(asset.get("tableName"));
         String engine = payload.getEngine();
         if (!StringUtils.hasText(engine)) {
-            engine = String.valueOf(asset.getOrDefault("databaseType", "MySQL"));
+            engine = OfflineAiScanSupport.resolveDatabaseType(asset, payload);
         }
         String tableKey = OfflineScanSnapshotUniqueKey.tableRowKey(dataInstance, databaseName, tableName);
         OfflineScanSensitivitySnapshotMessage tableMsg = sensitivityRow(
@@ -181,34 +178,6 @@ public class TaskWorkerImpl implements OfflineScanTaskProcessor {
 
     private static String str(Object value) {
         return value == null ? "" : String.valueOf(value);
-    }
-
-    private void dispatchAiScanIfNeeded(OfflineDatabaseScanDispatchPayload payload, Map<String, Object> asset, AssetScanResult result) {
-        if (payload == null || payload.getJobConfig() == null || payload.getJobConfig().getEnableAiScan() == null
-                || payload.getJobConfig().getEnableAiScan() != 1) {
-            return;
-        }
-        Map<String, Object> aiAsset = new ConcurrentHashMap<>(asset);
-        if (result != null) {
-            aiAsset.put("assetId", result.assetId());
-            aiAsset.put("databaseType", result.databaseType());
-            aiAsset.put("columnScanInfo", result.columnScanInfo());
-            aiAsset.put("columnSamples", result.samples());
-        }
-        OfflineDatabaseScanDispatchPayload aiPayload = new OfflineDatabaseScanDispatchPayload();
-        aiPayload.setEngine(payload.getEngine());
-        aiPayload.setInstanceId(payload.getInstanceId());
-        aiPayload.setJobId(payload.getJobId());
-        aiPayload.setTaskName(payload.getTaskName());
-        aiPayload.setDispatchVersion(payload.getDispatchVersion());
-        aiPayload.setJobConfig(payload.getJobConfig());
-        aiPayload.setPolicies(payload.getPolicies());
-        aiPayload.setAssets(List.of(aiAsset));
-        rabbitTemplate.convertAndSend(
-                OfflineScanConstants.RABBIT_EXCHANGE,
-                OfflineScanConstants.RABBIT_AI_ROUTING_KEY,
-                JSON.toJSONString(aiPayload)
-        );
     }
 
     @Override

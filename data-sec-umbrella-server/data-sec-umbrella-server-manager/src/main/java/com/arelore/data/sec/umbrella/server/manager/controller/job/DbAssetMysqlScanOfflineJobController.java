@@ -1,26 +1,27 @@
 package com.arelore.data.sec.umbrella.server.manager.controller.job;
 
 import com.arelore.data.sec.umbrella.server.core.common.Result;
+import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobIdRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.OfflineScanInstanceSnapshotDetailRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobInstanceQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DbAssetMysqlScanOfflineJobSaveRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.OfflineScanInstanceSnapshotDetailRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DbAssetMysqlScanOfflineJobResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.OfflineScanSnapshotDetailResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
+import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
+import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobService;
-import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
-import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
-import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
 import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotAssetEngineResolver;
 import com.arelore.data.sec.umbrella.server.manager.clickhouse.OfflineScanSnapshotQueryService;
+import com.arelore.data.sec.umbrella.server.manager.security.AdminPermission;
+import com.arelore.data.sec.umbrella.server.manager.security.PermissionAction;
 import com.arelore.data.sec.umbrella.server.manager.security.ProductCode;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.arelore.data.sec.umbrella.server.manager.task.infra.RedisTaskCacheUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * MySQL 数据资产离线扫描任务
+ * MySQL 数据资产离线扫描任务（仅 MySQL 引擎任务与实例）
  */
 @RestController
 @RequestMapping("api/db-asset/mysql/offline-scan-job")
@@ -40,39 +41,31 @@ public class DbAssetMysqlScanOfflineJobController {
     private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
     private final TaskManager taskManager;
     private final OfflineScanSnapshotQueryService offlineScanSnapshotQueryService;
+    private final RedisTaskCacheUtil redisTaskCacheUtil;
 
     @Autowired
     public DbAssetMysqlScanOfflineJobController(DbAssetMysqlScanOfflineJobService offlineScanJobService,
                                                 DbAssetMysqlScanOfflineJobInstanceService jobInstanceService,
                                                 TaskManager taskManager,
-                                                OfflineScanSnapshotQueryService offlineScanSnapshotQueryService) {
+                                                OfflineScanSnapshotQueryService offlineScanSnapshotQueryService,
+                                                RedisTaskCacheUtil redisTaskCacheUtil) {
         this.offlineScanJobService = offlineScanJobService;
         this.jobInstanceService = jobInstanceService;
         this.taskManager = taskManager;
         this.offlineScanSnapshotQueryService = offlineScanSnapshotQueryService;
+        this.redisTaskCacheUtil = redisTaskCacheUtil;
     }
 
     @PostMapping("/list")
     public Result<PageResponse<DbAssetMysqlScanOfflineJobResponse>> list(@RequestBody DbAssetMysqlScanOfflineJobQueryRequest request) {
+        request.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
         return Result.success(offlineScanJobService.getPage(request));
     }
 
     @PostMapping("/instance/list")
     public Result<PageResponse<DbAssetMysqlScanOfflineJobInstance>> listInstances(@RequestBody DbAssetMysqlScanOfflineJobInstanceQueryRequest request) {
-        long current = request.getCurrent() != null ? request.getCurrent() : 1L;
-        long size = request.getSize() != null ? request.getSize() : 10L;
-        Page<DbAssetMysqlScanOfflineJobInstance> page = new Page<>(current, size);
-
-        LambdaQueryWrapper<DbAssetMysqlScanOfflineJobInstance> w = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(request.getTaskName())) {
-            w.like(DbAssetMysqlScanOfflineJobInstance::getTaskName, request.getTaskName().trim());
-        }
-        if (StringUtils.hasText(request.getRunStatus())) {
-            w.eq(DbAssetMysqlScanOfflineJobInstance::getRunStatus, request.getRunStatus().trim());
-        }
-        w.orderByDesc(DbAssetMysqlScanOfflineJobInstance::getId);
-
-        IPage<DbAssetMysqlScanOfflineJobInstance> pageResult = jobInstanceService.page(page, w);
+        request.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
+        IPage<DbAssetMysqlScanOfflineJobInstance> pageResult = jobInstanceService.pageQuery(request);
         return Result.success(new PageResponse<>(
                 pageResult.getRecords(),
                 pageResult.getTotal(),
@@ -81,9 +74,6 @@ public class DbAssetMysqlScanOfflineJobController {
         ));
     }
 
-    /**
-     * 按任务实例 ID 查询 ClickHouse 中已落库的表级 / 字段级敏感快照（需 MQ 消费者写入且配置 clickhouse.*）。
-     */
     @PostMapping("/instance/snapshot-detail")
     public Result<OfflineScanSnapshotDetailResponse> instanceSnapshotDetail(
             @RequestBody OfflineScanInstanceSnapshotDetailRequest request) {
@@ -101,6 +91,9 @@ public class DbAssetMysqlScanOfflineJobController {
         if (inst == null) {
             return Result.error("实例不存在");
         }
+        if (!OfflineScanJobDatabaseType.MYSQL.equals(OfflineScanJobDatabaseType.normalizeInstance(inst.getDatabaseType()))) {
+            return Result.error("实例不属于 MySQL 引擎");
+        }
         String engine = OfflineScanSnapshotAssetEngineResolver.resolve(inst);
         request.setEngine(engine);
         request.setScanKind(scanKind);
@@ -117,7 +110,7 @@ public class DbAssetMysqlScanOfflineJobController {
             return Result.error("id不能为空");
         }
         DbAssetMysqlScanOfflineJobResponse data = offlineScanJobService.getById(request.getId());
-        if (data == null) {
+        if (data == null || !OfflineScanJobDatabaseType.MYSQL.equals(OfflineScanJobDatabaseType.normalizeJob(data.getDatabaseType()))) {
             return Result.error("任务不存在");
         }
         return Result.success(data);
@@ -127,6 +120,7 @@ public class DbAssetMysqlScanOfflineJobController {
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Long> create(@RequestBody DbAssetMysqlScanOfflineJobSaveRequest request) {
         try {
+            request.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
             Long id = offlineScanJobService.create(request);
             return Result.success(id);
         } catch (IllegalArgumentException e) {
@@ -138,6 +132,7 @@ public class DbAssetMysqlScanOfflineJobController {
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Boolean> update(@RequestBody DbAssetMysqlScanOfflineJobSaveRequest request) {
         try {
+            request.setDatabaseType(OfflineScanJobDatabaseType.MYSQL);
             boolean ok = offlineScanJobService.update(request);
             if (!ok) {
                 return Result.error("更新失败，任务不存在");
@@ -154,6 +149,10 @@ public class DbAssetMysqlScanOfflineJobController {
         if (request.getId() == null) {
             return Result.error("id不能为空");
         }
+        DbAssetMysqlScanOfflineJobResponse data = offlineScanJobService.getById(request.getId());
+        if (data == null || !OfflineScanJobDatabaseType.MYSQL.equals(OfflineScanJobDatabaseType.normalizeJob(data.getDatabaseType()))) {
+            return Result.error("任务不存在");
+        }
         boolean ok = offlineScanJobService.delete(request.getId());
         if (!ok) {
             return Result.error("删除失败");
@@ -165,7 +164,7 @@ public class DbAssetMysqlScanOfflineJobController {
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
     public Result<Long> execute(@RequestBody DbAssetMysqlScanOfflineJobIdRequest request) {
         try {
-            Long instanceId = offlineScanJobService.execute(request);
+            Long instanceId = offlineScanJobService.execute(request, OfflineScanJobDatabaseType.MYSQL);
             if (instanceId == null) {
                 return Result.error("任务不存在");
             }
@@ -174,5 +173,38 @@ public class DbAssetMysqlScanOfflineJobController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             return Result.error(e.getMessage());
         }
+    }
+
+    @PostMapping("/instance/stop")
+    @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
+    public Result<Boolean> stopInstance(@RequestBody DbAssetMysqlScanOfflineJobIdRequest request) {
+        if (request.getId() == null) {
+            return Result.error("id不能为空");
+        }
+        DbAssetMysqlScanOfflineJobInstance inst = jobInstanceService.getById(request.getId());
+        if (inst == null) {
+            return Result.error("实例不存在");
+        }
+        if (!OfflineScanJobDatabaseType.MYSQL.equals(OfflineScanJobDatabaseType.normalizeInstance(inst.getDatabaseType()))) {
+            return Result.error("实例不属于 MySQL 引擎");
+        }
+        String rs = inst.getRunStatus();
+        if (!OfflineJobRunStatusEnum.WAITING.getValue().equals(rs)
+                && !OfflineJobRunStatusEnum.RUNNING.getValue().equals(rs)) {
+            return Result.error("仅等待中或运行中的实例可停止");
+        }
+        String previous = rs;
+        inst.setRunStatus(OfflineJobRunStatusEnum.STOPPED.getValue());
+        if (!jobInstanceService.updateById(inst)) {
+            return Result.error("更新实例状态失败");
+        }
+        try {
+            redisTaskCacheUtil.bumpDispatchVersion(request.getId());
+        } catch (Exception ex) {
+            inst.setRunStatus(previous);
+            jobInstanceService.updateById(inst);
+            return Result.error("停止失败（Redis版本更新异常）: " + ex.getMessage());
+        }
+        return Result.success(true);
     }
 }

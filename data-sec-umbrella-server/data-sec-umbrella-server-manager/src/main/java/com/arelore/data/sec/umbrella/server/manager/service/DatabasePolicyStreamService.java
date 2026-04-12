@@ -1,7 +1,7 @@
 package com.arelore.data.sec.umbrella.server.manager.service;
 
-import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyRuleDetectionRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyRuleDetectionResponse;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -24,11 +24,11 @@ public class DatabasePolicyStreamService {
         this.databasePolicyService = databasePolicyService;
     }
 
-    public SseEmitter testAiRulesStream(DatabasePolicyTestRulesRequest request) {
-        SseEmitter emitter = new SseEmitter(120_000L);
+    public SseEmitter streamAiRuleDetection(DatabasePolicyRuleDetectionRequest request) {
+        SseEmitter emitter = new SseEmitter(300_000L);
         CompletableFuture.runAsync(() -> {
             try {
-                DatabasePolicyTestRulesResponse response = databasePolicyService.testAiRule(request);
+                DatabasePolicyRuleDetectionResponse response = databasePolicyService.executeAiRuleDetection(request);
                 String detail = response.getAiDetail() == null ? "" : response.getAiDetail();
                 int step = 24;
                 for (int i = 0; i < detail.length(); i += step) {

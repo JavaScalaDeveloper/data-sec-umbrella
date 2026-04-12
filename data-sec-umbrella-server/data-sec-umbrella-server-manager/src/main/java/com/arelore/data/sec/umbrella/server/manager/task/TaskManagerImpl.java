@@ -2,6 +2,7 @@ package com.arelore.data.sec.umbrella.server.manager.task;
 
 import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanConstants;
+import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineJobConfigSnapshot;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflinePolicySnapshot;
@@ -17,11 +18,11 @@ import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOffline
 import com.arelore.data.sec.umbrella.server.core.manager.task.TaskManager;
 import com.arelore.data.sec.umbrella.server.manager.task.asset.AssetPage;
 import com.arelore.data.sec.umbrella.server.manager.task.asset.AssetQueryStrategy;
+import com.arelore.data.sec.umbrella.server.manager.task.asset.ClickhouseTableAssetQueryStrategy;
 import com.arelore.data.sec.umbrella.server.manager.task.asset.MySQLTableAssetQueryStrategy;
 import com.arelore.data.sec.umbrella.server.manager.task.infra.RabbitDispatchUtil;
 import com.arelore.data.sec.umbrella.server.manager.task.infra.RedisTaskCacheUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -38,7 +39,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TaskManagerImpl implements TaskManager {
 
     private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
@@ -46,8 +46,27 @@ public class TaskManagerImpl implements TaskManager {
     private final DataSourceService dataSourceService;
     private final DatabasePolicyService databasePolicyService;
     private final MySQLTableAssetQueryStrategy mySQLAssetQueryStrategy;
+    private final ClickhouseTableAssetQueryStrategy clickhouseTableAssetQueryStrategy;
     private final RabbitDispatchUtil rabbitDispatchUtil;
     private final RedisTaskCacheUtil redisTaskCacheUtil;
+
+    public TaskManagerImpl(DbAssetMysqlScanOfflineJobInstanceService jobInstanceService,
+                           DbAssetMysqlScanOfflineJobService offlineJobService,
+                           DataSourceService dataSourceService,
+                           DatabasePolicyService databasePolicyService,
+                           MySQLTableAssetQueryStrategy mySQLAssetQueryStrategy,
+                           ClickhouseTableAssetQueryStrategy clickhouseTableAssetQueryStrategy,
+                           RabbitDispatchUtil rabbitDispatchUtil,
+                           RedisTaskCacheUtil redisTaskCacheUtil) {
+        this.jobInstanceService = jobInstanceService;
+        this.offlineJobService = offlineJobService;
+        this.dataSourceService = dataSourceService;
+        this.databasePolicyService = databasePolicyService;
+        this.mySQLAssetQueryStrategy = mySQLAssetQueryStrategy;
+        this.clickhouseTableAssetQueryStrategy = clickhouseTableAssetQueryStrategy;
+        this.rabbitDispatchUtil = rabbitDispatchUtil;
+        this.redisTaskCacheUtil = redisTaskCacheUtil;
+    }
 
     @Override
     public void dispatchOfflineMysqlScan() {
@@ -86,7 +105,7 @@ public class TaskManagerImpl implements TaskManager {
 
     private void dispatchOne(DbAssetMysqlScanOfflineJobInstance inst, List<DatabasePolicyResponse> allPolicies)
             throws Exception {
-        DbAssetMysqlScanOfflineJob job = offlineJobService.findLatestByTaskName(inst.getTaskName());
+        DbAssetMysqlScanOfflineJob job = offlineJobService.findLatestByTaskName(inst.getTaskName(), inst.getDatabaseType());
         if (job == null) {
             markFailed(inst, "关联的离线任务不存在");
             return;
@@ -104,12 +123,16 @@ public class TaskManagerImpl implements TaskManager {
             return;
         }
 
-        // 策略模式：按数据源类型选择资产查询策略（当前为 MySQL，Clickhouse 后续接入对应策略）
-        AssetQueryStrategy assetQueryStrategy = mySQLAssetQueryStrategy;
+        boolean clickhouse = OfflineScanJobDatabaseType.CLICKHOUSE.equals(OfflineScanJobDatabaseType.normalizeJob(job.getDatabaseType()));
+        AssetQueryStrategy assetQueryStrategy = clickhouse ? clickhouseTableAssetQueryStrategy : mySQLAssetQueryStrategy;
+        String dataSourceProduct = clickhouse ? OfflineScanJobDatabaseType.CLICKHOUSE : OfflineScanJobDatabaseType.MYSQL;
+        String enginePayload = clickhouse ? "Clickhouse" : "MySQL";
 
         long total = assetQueryStrategy.total(job);
         if (total <= 0) {
-            markFailed(inst, "未查询到待扫描的表资产（db_asset_mysql_table_info）");
+            markFailed(inst, clickhouse
+                    ? "未查询到待扫描的表资产（db_asset_clickhouse_table_info）"
+                    : "未查询到待扫描的表资产（db_asset_mysql_table_info）");
             return;
         }
 
@@ -140,14 +163,13 @@ public class TaskManagerImpl implements TaskManager {
             }
             for (Map<String, Object> asset : page.getRecords()) {
                 OfflineDatabaseScanDispatchPayload payload = new OfflineDatabaseScanDispatchPayload();
-                payload.setEngine("MySQL");
+                payload.setEngine(enginePayload);
                 payload.setInstanceId(inst.getId());
                 payload.setJobId(job.getId());
                 payload.setTaskName(job.getTaskName());
                 payload.setDispatchVersion(dispatchVersion);
                 payload.setJobConfig(buildJobConfig(job));
-                attachMysqlJdbcCredentials(payload, asset, mysqlCredByInstance);
-                // 每个表资产一个 msg
+                attachJdbcCredentials(payload, asset, mysqlCredByInstance, dataSourceProduct);
                 payload.setAssets(List.of(asset));
                 payload.setPolicies(policySnapshots);
 
@@ -168,34 +190,36 @@ public class TaskManagerImpl implements TaskManager {
         inst.setExtendInfo(JSON.toJSONString(Map.of(
                 "exchange", OfflineScanConstants.RABBIT_EXCHANGE,
                 "routingKey", OfflineScanConstants.RABBIT_ROUTING_KEY,
-                "assetEngine", "MySQL")));
+                "assetEngine", enginePayload)));
         jobInstanceService.updateById(inst);
         log.info("Dispatched offline scan instance {} job {}", inst.getId(), job.getId());
     }
 
-    private void attachMysqlJdbcCredentials(
+    private void attachJdbcCredentials(
             OfflineDatabaseScanDispatchPayload payload,
             Map<String, Object> asset,
-            Map<String, MysqlJdbcCredential> cache
+            Map<String, MysqlJdbcCredential> cache,
+            String dataSourceProductType
     ) {
         String instance = asset.get("instance") == null ? "" : String.valueOf(asset.get("instance")).trim();
         if (!StringUtils.hasText(instance)) {
             return;
         }
-        if (!cache.containsKey(instance)) {
-            cache.put(instance, lookupMysqlJdbcCredential(instance));
+        String cacheKey = dataSourceProductType + "|" + instance;
+        if (!cache.containsKey(cacheKey)) {
+            cache.put(cacheKey, lookupDataSourceCredential(instance, dataSourceProductType));
         }
-        MysqlJdbcCredential cred = cache.get(instance);
+        MysqlJdbcCredential cred = cache.get(cacheKey);
         if (cred != null) {
             payload.setMysqlJdbcUsername(cred.username());
             payload.setMysqlJdbcPasswordEncrypted(cred.passwordEncrypted());
         }
     }
 
-    private MysqlJdbcCredential lookupMysqlJdbcCredential(String instance) {
+    private MysqlJdbcCredential lookupDataSourceCredential(String instance, String dataSourceProductType) {
         LambdaQueryWrapper<DataSource> w = new LambdaQueryWrapper<>();
         w.eq(DataSource::getInstance, instance);
-        w.eq(DataSource::getDataSourceType, "MySQL");
+        w.eq(DataSource::getDataSourceType, dataSourceProductType);
         w.orderByDesc(DataSource::getId);
         w.last("limit 1");
         DataSource ds = dataSourceService.getOne(w);

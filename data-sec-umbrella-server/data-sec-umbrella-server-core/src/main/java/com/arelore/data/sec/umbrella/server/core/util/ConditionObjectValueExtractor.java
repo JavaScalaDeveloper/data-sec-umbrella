@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.util;
 
-import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyAssetSample;
 
 /**
  * 条件对象值提取工具类
@@ -10,7 +10,7 @@ public class ConditionObjectValueExtractor {
     /**
      * 根据条件对象获取对应的值
      */
-    public static String getValueByConditionObject(DatabasePolicyTestRulesRequest.TestData data, String conditionObject) {
+    public static String getValueByConditionObject(DatabasePolicyAssetSample data, String conditionObject) {
         if (data == null || conditionObject == null) {
             return null;
         }

@@ -11,4 +11,9 @@ public class DbAssetMysqlScanOfflineJobInstanceQueryRequest extends PageRequest 
 
     /** waiting / running / stopped / completed / failed */
     private String runStatus;
+
+    /**
+     * 引擎过滤：MySQL / Clickhouse（由 Controller 按路径写入）
+     */
+    private String databaseType;
 }

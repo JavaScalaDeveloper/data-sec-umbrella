@@ -56,11 +56,16 @@ offline-scan:
       max-size: ${OFFLINE_WORKER_POOL_MAX_SIZE:32}
       queue-capacity: ${OFFLINE_WORKER_POOL_QUEUE_CAPACITY:500}
       keep-alive-seconds: ${OFFLINE_WORKER_POOL_KEEP_ALIVE_SECONDS:60}
+    pool-ai:
+      core-size: ${OFFLINE_AI_WORKER_POOL_CORE_SIZE:4}
+      max-size: ${OFFLINE_AI_WORKER_POOL_MAX_SIZE:16}
+      queue-capacity: ${OFFLINE_AI_WORKER_POOL_QUEUE_CAPACITY:200}
+      keep-alive-seconds: ${OFFLINE_AI_WORKER_POOL_KEEP_ALIVE_SECONDS:60}
 
 llm:
   ollama:
-    enabled: ${LLM_OLLAMA_ENABLED:false}
-    base-url: ${LLM_OLLAMA_BASE_URL:http://book-n95:11434}
-    model-name: ${LLM_OLLAMA_MODEL:qwen3.5:0.8b}
+    enabled: ${LLM_OLLAMA_ENABLED:true}
+    base-url: ${LLM_OLLAMA_BASE_URL:http://book-i5-12h:11434}
+    model-name: ${LLM_OLLAMA_MODEL:qwen3:0.6b}
     fallback-model-name: ${LLM_OLLAMA_FALLBACK_MODEL:qwen3:0.6b}
-    timeout-seconds: ${LLM_OLLAMA_TIMEOUT_SECONDS:60}
+    timeout-seconds: ${LLM_OLLAMA_TIMEOUT_SECONDS:1200}

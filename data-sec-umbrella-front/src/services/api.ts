@@ -176,19 +176,19 @@ export const databasePolicyApi = {
         });
     },
 
-    // 测试规则
-    testRules: async (data: any) => {
+    /** 规则检测：分类规则 + 规则表达式（不调用 LLM） */
+    ruleDetection: async (data: any) => {
         return request<{
             code: number;
             message: string;
             data: any;
-        }>('/api/database-policy/test-rules', {
+        }>('/api/database-policy/rule-detection', {
             method: 'POST',
             body: JSON.stringify(data),
         });
     },
-    // 流式测试AI规则
-    testAiRulesStream: async (
+    /** 规则检测：AI 规则（SSE） */
+    ruleDetectionAiStream: async (
         data: any,
         onChunk: (text: string) => void,
         onDone: (result: { aiPassed: boolean; aiDetail: string }) => void,
@@ -198,7 +198,7 @@ export const databasePolicyApi = {
         if (!auth) {
             throw new Error('请先登录');
         }
-        const response = await fetch(`${BASE_URL}/api/database-policy/test-ai-rules-stream`, {
+        const response = await fetch(`${BASE_URL}/api/database-policy/rule-detection-ai-stream`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -497,6 +497,139 @@ export const mysqlOfflineScanJobInstanceApi = {
             body: JSON.stringify(params),
         });
     },
+    /** 停止实例：DB 标记 stopped，并刷新 Redis 派发版本使旧 MQ 消息被丢弃 */
+    stop: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/db-asset/mysql/offline-scan-job/instance/stop', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+};
+
+/** ClickHouse 离线批量任务（后端路径独立，与 MySQL 共用任务存储与领域逻辑） */
+export const clickhouseOfflineScanJobApi = {
+    getPage: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                records: any[];
+                total: number;
+                current: number;
+                size: number;
+            };
+        }>('/api/db-asset/clickhouse/offline-scan-job/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    getById: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: any;
+        }>('/api/db-asset/clickhouse/offline-scan-job/getById', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+    create: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: number;
+        }>('/api/db-asset/clickhouse/offline-scan-job/create', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    update: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/db-asset/clickhouse/offline-scan-job/update', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    delete: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/db-asset/clickhouse/offline-scan-job/delete', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+    execute: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: number;
+        }>('/api/db-asset/clickhouse/offline-scan-job/execute', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+};
+
+export const clickhouseOfflineScanJobInstanceApi = {
+    getPage: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                records: any[];
+                total: number;
+                current: number;
+                size: number;
+            };
+        }>('/api/db-asset/clickhouse/offline-scan-job/instance/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    getSnapshotDetail: async (params: {
+        id: number;
+        scanKind: string;
+        uniqueKeyContains?: string;
+        sensitivityLevels?: string[];
+        sensitivityTagsContains?: string;
+        tableCurrent?: number;
+        tableSize?: number;
+        columnCurrent?: number;
+        columnSize?: number;
+    }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                tableSnapshots: any[];
+                columnSnapshots: any[];
+                tableTotal?: number;
+                columnTotal?: number;
+            };
+        }>('/api/db-asset/clickhouse/offline-scan-job/instance/snapshot-detail', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    stop: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/db-asset/clickhouse/offline-scan-job/instance/stop', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
 };
 
 // MySQL数据库信息API
@@ -665,6 +798,149 @@ export const mysqlTableApi = {
     },
 };
 
+/** ClickHouse 数据资产-库/表（主库表 db_asset_clickhouse_*，独立领域服务） */
+export const clickhouseDatabaseApi = {
+    getPage: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                records: any[];
+                total: number;
+                current: number;
+                size: number;
+            };
+        }>('/api/data-asset/clickhouse/database/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    getById: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: any;
+        }>('/api/data-asset/clickhouse/database/get-by-id', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+    create: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: number;
+        }>('/api/data-asset/clickhouse/database/create', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    update: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/database/update', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    updateManualReview: async (params: { id: number; manualReview?: string | null }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/database/update-manual-review', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: params.id,
+                manualReview: params.manualReview === undefined || params.manualReview === null ? '' : params.manualReview,
+            }),
+        });
+    },
+    delete: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/database/delete', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+};
+
+export const clickhouseTableApi = {
+    getPage: async (params: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: {
+                records: any[];
+                total: number;
+                current: number;
+                size: number;
+            };
+        }>('/api/data-asset/clickhouse/table/list', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+    },
+    getById: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: any;
+        }>('/api/data-asset/clickhouse/table/get-by-id', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+    create: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: number;
+        }>('/api/data-asset/clickhouse/table/create', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    update: async (data: any) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/table/update', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+    updateManualReview: async (params: { id: number; manualReview?: string | null }) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/table/update-manual-review', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: params.id,
+                manualReview: params.manualReview === undefined || params.manualReview === null ? '' : params.manualReview,
+            }),
+        });
+    },
+    delete: async (id: number) => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/table/delete', {
+            method: 'POST',
+            body: JSON.stringify({id}),
+        });
+    },
+};
+
 // MySQL资产扫描API
 export const mysqlAssetScanApi = {
     // 手动触发MySQL资产扫描
@@ -698,6 +974,39 @@ export const mysqlAssetScanApi = {
             message: string;
             data: boolean;
         }>('/api/data-asset/mysql/scan-tables', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+};
+
+export const clickhouseAssetScanApi = {
+    scan: async () => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/scan', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+    scanDatabases: async () => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/scan-databases', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+    scanTables: async () => {
+        return request<{
+            code: number;
+            message: string;
+            data: boolean;
+        }>('/api/data-asset/clickhouse/scan-tables', {
             method: 'POST',
             body: JSON.stringify({}),
         });

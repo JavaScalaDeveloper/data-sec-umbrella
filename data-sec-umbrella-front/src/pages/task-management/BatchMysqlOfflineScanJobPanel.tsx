@@ -1,5 +1,6 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
+    Alert,
     Button,
     Card,
     Col,
@@ -16,7 +17,7 @@ import {
 } from 'antd';
 import type {ColumnsType} from 'antd/es/table';
 import {EditOutlined, PlusOutlined, SearchOutlined, ThunderboltOutlined} from '@ant-design/icons';
-import {databasePolicyApi, mysqlOfflineScanJobApi} from '../../services/api';
+import {clickhouseOfflineScanJobApi, databasePolicyApi, mysqlOfflineScanJobApi} from '../../services/api';
 
 const {Option} = Select;
 const {TextArea} = Input;
@@ -55,7 +56,18 @@ function parseTags(raw: string | undefined): string[] {
     }
 }
 
-const BatchMysqlOfflineScanJobPanel: React.FC = () => {
+export type BatchOfflineScanJobPanelVariant = 'mysql' | 'clickhouse';
+
+export interface BatchMysqlOfflineScanJobPanelProps {
+    /** clickhouse：调用 /api/db-asset/clickhouse/offline-scan-job/*，策略下拉仅展示 Clickhouse 类型 */
+    variant?: BatchOfflineScanJobPanelVariant;
+}
+
+const BatchMysqlOfflineScanJobPanel: React.FC<BatchMysqlOfflineScanJobPanelProps> = ({variant = 'mysql'}) => {
+    const jobApi = useMemo(
+        () => (variant === 'clickhouse' ? clickhouseOfflineScanJobApi : mysqlOfflineScanJobApi),
+        [variant],
+    );
     const [form] = Form.useForm();
     const [modalForm] = Form.useForm();
     const [loading, setLoading] = useState(false);
@@ -67,7 +79,11 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
 
     const fetchPolicies = useCallback(async () => {
         try {
-            const res = await databasePolicyApi.getPage({current: 1, size: 500});
+            const res = await databasePolicyApi.getPage({
+                current: 1,
+                size: 500,
+                ...(variant === 'clickhouse' ? {databaseType: 'Clickhouse'} : {}),
+            });
             if (res.code === 200 && res.data?.records) {
                 setPolicyOptions(
                     res.data.records.map((p: any) => ({
@@ -79,13 +95,13 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
         } catch {
             /* ignore */
         }
-    }, []);
+    }, [variant]);
 
     const fetchList = useCallback(async (page: number, pageSize: number) => {
         setLoading(true);
         try {
             const q = form.getFieldsValue();
-            const res = await mysqlOfflineScanJobApi.getPage({
+            const res = await jobApi.getPage({
                 current: page,
                 size: pageSize,
                 taskName: q.taskName || undefined,
@@ -106,7 +122,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [form]);
+    }, [form, jobApi]);
 
     useEffect(() => {
         fetchPolicies();
@@ -136,7 +152,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
     const openEdit = async (id: number) => {
         setEditingId(id);
         try {
-            const res = await mysqlOfflineScanJobApi.getById(id);
+            const res = await jobApi.getById(id);
             if (res.code !== 200 || !res.data) {
                 message.error(res.message || '获取任务失败');
                 return;
@@ -181,7 +197,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
             const values = await modalForm.validateFields();
             const payload = buildPayload(values);
             if (editingId != null) {
-                const res = await mysqlOfflineScanJobApi.update({...payload, id: editingId});
+                const res = await jobApi.update({...payload, id: editingId});
                 if (res.code === 200) {
                     message.success('更新成功');
                     setModalOpen(false);
@@ -190,7 +206,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
                     message.error(res.message || '更新失败');
                 }
             } else {
-                const res = await mysqlOfflineScanJobApi.create(payload);
+                const res = await jobApi.create(payload);
                 if (res.code === 200) {
                     message.success('创建成功');
                     setModalOpen(false);
@@ -208,7 +224,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
 
     const handleExecute = async (id: number) => {
         try {
-            const res = await mysqlOfflineScanJobApi.execute(id);
+            const res = await jobApi.execute(id);
             if (res.code === 200) {
                 message.success(`已创建执行实例 #${res.data}，任务已加入分发队列`);
             } else {
@@ -223,7 +239,7 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
     const handleEnabledChange = async (record: any, checked: boolean) => {
         const next = {...record, enabledStatus: checked ? 1 : 0};
         try {
-            const res = await mysqlOfflineScanJobApi.update({
+            const res = await jobApi.update({
                 id: next.id,
                 taskName: next.taskName,
                 taskDescription: next.taskDescription || '',
@@ -327,6 +343,14 @@ const BatchMysqlOfflineScanJobPanel: React.FC = () => {
 
     return (
         <>
+            {/*{variant === 'clickhouse' && (*/}
+            {/*    <Alert*/}
+            {/*        type="info"*/}
+            {/*        showIcon*/}
+            {/*        style={{marginBottom: 16}}*/}
+            {/*        message="本页调用 ClickHouse 专用任务接口（/api/db-asset/clickhouse/offline-scan-job/*），与 MySQL 页共用任务表与调度；请确保扫描范围与策略为 Clickhouse 引擎。"*/}
+            {/*    />*/}
+            {/*)}*/}
             <Card style={{marginBottom: 16}}>
                 <Form form={form} layout="inline">
                     <Form.Item name="taskName" label="任务名">

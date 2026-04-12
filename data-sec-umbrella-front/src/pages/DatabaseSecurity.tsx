@@ -124,6 +124,13 @@ const DatabaseSecurity: React.FC = () => {
         }
         return 'config';
     });
+    const [batchClickhouseTab, setBatchClickhouseTab] = useState<'config' | 'instances'>(() => {
+        const path = location.pathname;
+        if (path.includes('/task-management/batch/clickhouse/instances')) {
+            return 'instances';
+        }
+        return 'config';
+    });
     const [form] = Form.useForm();
     const [editForm] = Form.useForm();
     const [dataSourceForm] = Form.useForm();
@@ -141,7 +148,7 @@ const DatabaseSecurity: React.FC = () => {
     // const [currentDataSource, setCurrentDataSource] = useState<any>(null);
     const [connectivityStatus, setConnectivityStatus] = useState<{ success: boolean; message: string } | null>(null);
     const [classificationRules, setClassificationRules] = useState<any[]>([]);
-    const [classificationRulesData, setClassificationRulesData] = useState<any[]>([{
+    const [detectionSamples, setDetectionSamples] = useState<any[]>([{
         id: Date.now(),
         databaseName: '',
         databaseDescription: '',
@@ -166,11 +173,17 @@ const DatabaseSecurity: React.FC = () => {
         try {
             console.log('请求参数:', params);
             if (activeMenu === '/data-source') {
-                // 获取数据源数据
+                const fv = form.getFieldsValue();
                 const response = await dataSourceApi.getPage({
-                    current: pagination.current,
-                    size: pagination.pageSize,
-                    ...params,
+                    current: params.current != null ? params.current : pagination.current,
+                    size: params.size != null ? params.size : pagination.pageSize,
+                    instance: params.instance !== undefined ? params.instance : fv.instance,
+                    username: params.username !== undefined ? params.username : fv.username,
+                    dataSourceType:
+                        activeTab === 'clickhouse'
+                            ? 'Clickhouse'
+                            : (params.dataSourceType !== undefined ? params.dataSourceType : fv.data_source_type) ||
+                              undefined,
                 });
                 console.log('响应数据:', response);
                 if (response.code === 200) {
@@ -242,6 +255,9 @@ const DatabaseSecurity: React.FC = () => {
             setActiveMenu('/task-management/batch');
             if (path.includes('/task-management/batch/clickhouse')) {
                 setBatchTaskTab('clickhouse');
+                setBatchClickhouseTab(
+                    path.includes('/task-management/batch/clickhouse/instances') ? 'instances' : 'config',
+                );
             } else {
                 setBatchTaskTab('mysql');
                 setBatchMysqlTab(path.includes('/task-management/batch/mysql/instances') ? 'instances' : 'config');
@@ -391,8 +407,15 @@ const DatabaseSecurity: React.FC = () => {
                 setBatchMysqlTab('config');
                 navigate('/database-security/task-management/batch/mysql/config');
             } else {
-                navigate('/database-security/task-management/batch/clickhouse');
+                setBatchClickhouseTab('config');
+                navigate('/database-security/task-management/batch/clickhouse/config');
             }
+            return;
+        }
+
+        if (key === '/overview') {
+            setActiveMenu('/overview');
+            navigate('/database-security/overview/mysql');
             return;
         }
 
@@ -403,6 +426,7 @@ const DatabaseSecurity: React.FC = () => {
     // 处理Tab切换（策略管理走子路由；数据源仅本地切换）
     const handleTabChange = (key: string) => {
         setActiveTab(key);
+        setPagination((p) => ({...p, current: 1}));
         if (activeMenu === '/policy-management') {
             navigate(`/database-security/policy-management/${key}`);
         } else if (activeMenu === '/data-source') {
@@ -416,13 +440,18 @@ const DatabaseSecurity: React.FC = () => {
         navigate(`/database-security/task-management/batch/mysql/${next}`);
     };
 
+    const handleBatchClickhouseTabChange = (key: string) => {
+        const next = key === 'instances' ? 'instances' : 'config';
+        setBatchClickhouseTab(next);
+        navigate(`/database-security/task-management/batch/clickhouse/${next}`);
+    };
+
     // 处理查询
     const handleSearch = () => {
         const values = form.getFieldsValue();
         if (activeMenu === '/data-source') {
-            // 搜索数据源
             const params = {
-                dataSourceType: values.data_source_type,
+                dataSourceType: activeTab === 'clickhouse' ? 'Clickhouse' : values.data_source_type,
                 instance: values.instance,
                 username: values.username,
             };
@@ -653,14 +682,13 @@ const DatabaseSecurity: React.FC = () => {
         setClassificationRules(classificationRules.filter(rule => rule.id !== id));
     };
 
-    // 测试规则
-    const testRules = async () => {
+    const runRuleDetection = async () => {
         try {
             const formValues = editForm.getFieldsValue();
-            const response = await databasePolicyApi.testRules({
+            const response = await databasePolicyApi.ruleDetection({
                 classificationRules: classificationRules,
                 ruleExpression: formValues.ruleExpression,
-                testData: classificationRulesData,
+                samples: detectionSamples,
                 databaseType: currentDbType,
             });
             if (response.code === 200) {
@@ -668,18 +696,18 @@ const DatabaseSecurity: React.FC = () => {
                 setValidationResult((prev: any) => ({
                     ...(prev || response.data),
                     aiPassed: false,
-                    aiDetail: 'AI规则流式测试中...',
+                    aiDetail: 'AI规则检测中...',
                 }));
-                await databasePolicyApi.testAiRulesStream(
+                await databasePolicyApi.ruleDetectionAiStream(
                     {
                         aiRule: formValues.aiRule,
-                        testData: classificationRulesData,
+                        samples: detectionSamples,
                         databaseType: currentDbType,
                     },
                     (chunk: string) => {
                         setValidationResult((prev: any) => ({
                             ...(prev || {}),
-                            aiDetail: `${prev?.aiDetail && prev.aiDetail !== 'AI规则流式测试中...' ? prev.aiDetail : ''}${chunk}`,
+                            aiDetail: `${prev?.aiDetail && prev.aiDetail !== 'AI规则检测中...' ? prev.aiDetail : ''}${chunk}`,
                         }));
                     },
                     (done: { aiPassed: boolean; aiDetail: string }) => {
@@ -693,12 +721,12 @@ const DatabaseSecurity: React.FC = () => {
                         setValidationResult((prev: any) => ({
                             ...(prev || {}),
                             aiPassed: false,
-                            aiDetail: `AI规则测试失败: ${err}`,
+                            aiDetail: `AI规则检测失败: ${err}`,
                         }));
                     }
                 );
             } else {
-                message.error(response.message || '测试规则失败');
+                message.error(response.message || '规则检测失败');
             }
         } catch (error) {
             message.error('网络请求失败');
@@ -1101,9 +1129,60 @@ const DatabaseSecurity: React.FC = () => {
                                         />
                                     </TabPane>
                                     <TabPane tab="Clickhouse" key="clickhouse">
-                                        <div
-                                            style={{textAlign: 'center', padding: '50px'}}>Clickhouse数据源管理功能开发中
-                                        </div>
+                                        <Card style={{marginBottom: '24px'}}>
+                                            <div style={{marginBottom: 16, color: 'rgba(0,0,0,0.65)'}}>
+                                                仅管理 ClickHouse 类型数据源；实例填写为 <code>host:端口</code>（与 JDBC{' '}
+                                                <code>jdbc:clickhouse://host:端口/default</code> 一致）。
+                                            </div>
+                                            <Form form={form} layout="inline">
+                                                <Row gutter={16}>
+                                                    <Col span={8}>
+                                                        <Form.Item name="instance" label="实例">
+                                                            <Input placeholder="host:端口"/>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={8}>
+                                                        <Form.Item name="username" label="用户名">
+                                                            <Input placeholder="用户名"/>
+                                                        </Form.Item>
+                                                    </Col>
+                                                    <Col span={8}>
+                                                        <Space>
+                                                            <Button type="primary" icon={<SearchOutlined/>}
+                                                                    onClick={handleSearch}>查询</Button>
+                                                            <Button onClick={handleReset}>重置</Button>
+                                                            <Button
+                                                                type="primary"
+                                                                icon={<PlusOutlined/>}
+                                                                onClick={() => {
+                                                                    dataSourceForm.resetFields();
+                                                                    dataSourceForm.setFieldsValue({dataSourceType: 'Clickhouse'});
+                                                                    setConnectivityStatus(null);
+                                                                    setDataSourceModalVisible(true);
+                                                                }}
+                                                            >
+                                                                新增数据源
+                                                            </Button>
+                                                        </Space>
+                                                    </Col>
+                                                </Row>
+                                            </Form>
+                                        </Card>
+                                        <Table
+                                            columns={dataSourceColumns}
+                                            dataSource={dataSources}
+                                            rowKey="id"
+                                            loading={loading}
+                                            pagination={{
+                                                current: pagination.current,
+                                                pageSize: pagination.pageSize,
+                                                total: pagination.total,
+                                                showSizeChanger: true,
+                                                showTotal: (total) => `共 ${total} 条`,
+                                                onChange: handlePaginationChange,
+                                            }}
+                                            style={{width: '100%'}}
+                                        />
                                     </TabPane>
                                 </Tabs>
                             </>
@@ -1132,9 +1211,14 @@ const DatabaseSecurity: React.FC = () => {
                                         </TabPane>
                                     </Tabs>
                                 ) : (
-                                    <div style={{textAlign: 'center', padding: '48px'}}>
-                                        Clickhouse 批量任务开发中
-                                    </div>
+                                    <Tabs activeKey={batchClickhouseTab} onChange={handleBatchClickhouseTabChange}>
+                                        <TabPane tab="任务配置" key="config">
+                                            <BatchMysqlOfflineScanJobPanel variant="clickhouse"/>
+                                        </TabPane>
+                                        <TabPane tab="任务实例" key="instances">
+                                            <BatchMysqlOfflineScanJobInstancePanel variant="clickhouse"/>
+                                        </TabPane>
+                                    </Tabs>
                                 )}
                             </>
                         ) : activeMenu === '/configuration' ? (
@@ -1369,11 +1453,11 @@ const DatabaseSecurity: React.FC = () => {
                                 <Col span={8}>
                                     <Form.Item label="库名">
                                         <Input
-                                            value={classificationRulesData[0]?.databaseName}
+                                            value={detectionSamples[0]?.databaseName}
                                             onChange={(e) => {
-                                                const newData = [...classificationRulesData];
+                                                const newData = [...detectionSamples];
                                                 newData[0].databaseName = e.target.value;
-                                                setClassificationRulesData(newData);
+                                                setDetectionSamples(newData);
                                             }}
                                             placeholder="请输入库名"
                                         />
@@ -1382,11 +1466,11 @@ const DatabaseSecurity: React.FC = () => {
                                 <Col span={8}>
                                     <Form.Item label="库描述">
                                         <Input
-                                            value={classificationRulesData[0]?.databaseDescription}
+                                            value={detectionSamples[0]?.databaseDescription}
                                             onChange={(e) => {
-                                                const newData = [...classificationRulesData];
+                                                const newData = [...detectionSamples];
                                                 newData[0].databaseDescription = e.target.value;
-                                                setClassificationRulesData(newData);
+                                                setDetectionSamples(newData);
                                             }}
                                             placeholder="请输入库描述"
                                         />
@@ -1395,11 +1479,11 @@ const DatabaseSecurity: React.FC = () => {
                                 <Col span={8}>
                                     <Form.Item label="表名">
                                         <Input
-                                            value={classificationRulesData[0]?.tableName}
+                                            value={detectionSamples[0]?.tableName}
                                             onChange={(e) => {
-                                                const newData = [...classificationRulesData];
+                                                const newData = [...detectionSamples];
                                                 newData[0].tableName = e.target.value;
-                                                setClassificationRulesData(newData);
+                                                setDetectionSamples(newData);
                                             }}
                                             placeholder="请输入表名"
                                         />
@@ -1410,11 +1494,11 @@ const DatabaseSecurity: React.FC = () => {
                                 <Col span={8}>
                                     <Form.Item label="表描述">
                                         <Input
-                                            value={classificationRulesData[0]?.tableDescription}
+                                            value={detectionSamples[0]?.tableDescription}
                                             onChange={(e) => {
-                                                const newData = [...classificationRulesData];
+                                                const newData = [...detectionSamples];
                                                 newData[0].tableDescription = e.target.value;
-                                                setClassificationRulesData(newData);
+                                                setDetectionSamples(newData);
                                             }}
                                             placeholder="请输入表描述"
                                         />
@@ -1423,11 +1507,11 @@ const DatabaseSecurity: React.FC = () => {
                                 <Col span={8}>
                                     <Form.Item label="列名">
                                         <Input
-                                            value={classificationRulesData[0]?.columnName}
+                                            value={detectionSamples[0]?.columnName}
                                             onChange={(e) => {
-                                                const newData = [...classificationRulesData];
+                                                const newData = [...detectionSamples];
                                                 newData[0].columnName = e.target.value;
-                                                setClassificationRulesData(newData);
+                                                setDetectionSamples(newData);
                                             }}
                                             placeholder="请输入列名"
                                         />
@@ -1436,11 +1520,11 @@ const DatabaseSecurity: React.FC = () => {
                                 <Col span={8}>
                                     <Form.Item label="列描述">
                                         <Input
-                                            value={classificationRulesData[0]?.columnDescription}
+                                            value={detectionSamples[0]?.columnDescription}
                                             onChange={(e) => {
-                                                const newData = [...classificationRulesData];
+                                                const newData = [...detectionSamples];
                                                 newData[0].columnDescription = e.target.value;
-                                                setClassificationRulesData(newData);
+                                                setDetectionSamples(newData);
                                             }}
                                             placeholder="请输入列描述"
                                         />
@@ -1466,9 +1550,9 @@ const DatabaseSecurity: React.FC = () => {
                                                         <Input.TextArea
                                                             value={value}
                                                             onChange={(e) => {
-                                                                const newData = [...classificationRulesData];
+                                                                const newData = [...detectionSamples];
                                                                 newData[index].columnValues[valueIndex] = e.target.value;
-                                                                setClassificationRulesData(newData);
+                                                                setDetectionSamples(newData);
                                                             }}
                                                             placeholder="请输入列值"
                                                             rows={2}
@@ -1479,9 +1563,9 @@ const DatabaseSecurity: React.FC = () => {
                                                                 type="link"
                                                                 danger
                                                                 onClick={() => {
-                                                                    const newData = [...classificationRulesData];
+                                                                    const newData = [...detectionSamples];
                                                                     newData[index].columnValues.splice(valueIndex, 1);
-                                                                    setClassificationRulesData(newData);
+                                                                    setDetectionSamples(newData);
                                                                 }}
                                                                 style={{marginTop: '4px'}}
                                                             >
@@ -1493,9 +1577,9 @@ const DatabaseSecurity: React.FC = () => {
                                                 <Button
                                                     type="dashed"
                                                     onClick={() => {
-                                                        const newData = [...classificationRulesData];
+                                                        const newData = [...detectionSamples];
                                                         newData[index].columnValues.push('');
-                                                        setClassificationRulesData(newData);
+                                                        setDetectionSamples(newData);
                                                     }}
                                                 >
                                                     + 添加列值
@@ -1504,7 +1588,7 @@ const DatabaseSecurity: React.FC = () => {
                                         )
                                     }
                                 ]}
-                                dataSource={classificationRulesData}
+                                dataSource={detectionSamples}
                                 rowKey="id"
                                 pagination={false}
                                 size="small"
@@ -1536,37 +1620,69 @@ const DatabaseSecurity: React.FC = () => {
                                     return;
                                 }
 
-                                // 调用测试规则函数，传递所有数据
-                                await testRules();
+                                await runRuleDetection();
                             }}
                         >
-                            测试规则
+                            规则检测
                         </Button>
                     </Form.Item>
                     {validationResult && (
                         <Card title="验证结果" size="small">
-                            <p>
-                                规则验证:<Tag
-                                color={validationResult.rulePassed ? 'green' : 'red'}>{validationResult.rulePassed ? '通过' : '未通过'}</Tag>
-                            </p>
-                            <p>
-                                AI规则验证:<Tag
-                                color={validationResult.aiPassed ? 'green' : 'red'}>{validationResult.aiPassed ? '通过' : '未通过'}</Tag>
-                            </p>
-                            {validationResult.ruleDetails && (
-                                <div>
-                                    <p>规则命中详情:</p>
-                                    <ul>
-                                        {validationResult.ruleDetails.map((detail: any, index: number) => (
-                                            <li key={index}>{detail.rule}:<Tag
-                                                color={detail.matched ? 'green' : 'red'}>{detail.matched ? '命中' : '未命中'}
-                                            </Tag>({detail.detail})
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                            {validationResult.aiDetail && (<p>AI分析详情: {validationResult.aiDetail}</p>)}
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24} md={12}>
+                                    <div style={{paddingRight: 8}}>
+                                        <p style={{fontWeight: 600, marginBottom: 8}}>规则检测</p>
+                                        <p>
+                                            规则验证:
+                                            <Tag
+                                                color={validationResult.rulePassed ? 'green' : 'red'}
+                                            >
+                                                {validationResult.rulePassed ? '通过' : '未通过'}
+                                            </Tag>
+                                        </p>
+                                        {validationResult.ruleDetails && (
+                                            <div>
+                                                <p>规则命中详情:</p>
+                                                <ul style={{marginBottom: 0, paddingLeft: 20}}>
+                                                    {validationResult.ruleDetails.map((detail: any, index: number) => (
+                                                        <li key={index}>
+                                                            {detail.rule}:
+                                                            <Tag color={detail.matched ? 'green' : 'red'}>
+                                                                {detail.matched ? '命中' : '未命中'}
+                                                            </Tag>
+                                                            ({detail.detail})
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Col>
+                                <Col xs={24} md={12}>
+                                    <p style={{fontWeight: 600, marginBottom: 8}}>AI分析详情</p>
+                                    <p>
+                                        AI规则验证:
+                                        <Tag
+                                            color={validationResult.aiPassed ? 'green' : 'red'}
+                                        >
+                                            {validationResult.aiPassed ? '通过' : '未通过'}
+                                        </Tag>
+                                    </p>
+                                    {validationResult.aiDetail && (
+                                        <div
+                                            style={{
+                                                whiteSpace: 'pre-wrap',
+                                                wordBreak: 'break-word',
+                                                maxHeight: 320,
+                                                overflow: 'auto',
+                                                padding: '8px 0',
+                                            }}
+                                        >
+                                            {validationResult.aiDetail}
+                                        </div>
+                                    )}
+                                </Col>
+                            </Row>
                         </Card>
                     )}
                 </Form>
@@ -1605,6 +1721,7 @@ const DatabaseSecurity: React.FC = () => {
                             <Option value="MySQL">MySQL</Option>
                             <Option value="Oracle">Oracle</Option>
                             <Option value="SQL Server">SQL Server</Option>
+                            <Option value="Clickhouse">Clickhouse</Option>
                         </Select>
                     </Form.Item>
                     <Form.Item

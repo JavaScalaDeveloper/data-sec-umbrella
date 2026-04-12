@@ -1,5 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.strategy;
 
+import com.arelore.data.sec.umbrella.server.core.strategy.impl.ClickHouseScanStrategy;
 import com.arelore.data.sec.umbrella.server.core.strategy.impl.MySQLScanStrategy;
 import com.arelore.data.sec.umbrella.server.core.strategy.impl.OracleScanStrategy;
 import com.arelore.data.sec.umbrella.server.core.strategy.impl.SQLServerScanStrategy;
@@ -17,6 +18,7 @@ public class DatabaseScanStrategyFactory {
     static {
         // 注册各种数据库扫描策略
         STRATEGY_MAP.put("MySQL", new MySQLScanStrategy());
+        STRATEGY_MAP.put("Clickhouse", new ClickHouseScanStrategy());
         STRATEGY_MAP.put("Oracle", new OracleScanStrategy());
         STRATEGY_MAP.put("SQL Server", new SQLServerScanStrategy());
     }

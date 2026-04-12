@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(TaskWorkerPoolProperties.class)
+@EnableConfigurationProperties({TaskWorkerPoolProperties.class, TaskWorkerAiPoolProperties.class})
 /**
  * Worker 配置装配类。
  *

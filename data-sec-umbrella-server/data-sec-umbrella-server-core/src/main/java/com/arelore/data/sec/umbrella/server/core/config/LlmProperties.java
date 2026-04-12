@@ -35,8 +35,8 @@ public class LlmProperties {
     private String fallbackModelName = "qwen3:0.6b";
 
     /**
-     * 推理超时时间（秒）。
+     * 推理超时时间（秒）；慢模型或大提示词时可配合 {@code LLM_OLLAMA_TIMEOUT_SECONDS} 再调大。
      */
-    private Integer timeoutSeconds = 60;
+    private Integer timeoutSeconds = 600;
 }
 

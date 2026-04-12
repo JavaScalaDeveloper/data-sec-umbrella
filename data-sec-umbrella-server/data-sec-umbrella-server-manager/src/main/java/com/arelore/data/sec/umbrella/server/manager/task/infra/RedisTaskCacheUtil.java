@@ -30,5 +30,21 @@ public class RedisTaskCacheUtil {
                 Duration.ofDays(7)
         );
     }
+
+    /**
+     * 将实例的派发版本号更新为新值，使已入队但携带旧 {@code dispatchVersion} 的 MQ 消息在 Worker
+     * {@code isMessageVersionValid} 校验失败并被 ACK 丢弃。
+     */
+    public void bumpDispatchVersion(Long instanceId) {
+        if (instanceId == null) {
+            return;
+        }
+        long v = System.currentTimeMillis();
+        stringRedisTemplate.opsForValue().set(
+                OfflineScanConstants.REDIS_KEY_INSTANCE_PREFIX + instanceId + OfflineScanConstants.REDIS_KEY_INSTANCE_VERSION_SUFFIX,
+                String.valueOf(v),
+                Duration.ofDays(7)
+        );
+    }
 }
 

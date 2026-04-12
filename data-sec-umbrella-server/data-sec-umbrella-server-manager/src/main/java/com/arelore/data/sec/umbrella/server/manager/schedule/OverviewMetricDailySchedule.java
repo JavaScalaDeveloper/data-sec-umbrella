@@ -29,7 +29,12 @@ public class OverviewMetricDailySchedule {
         try {
             overviewMetricAggregator.aggregateMysqlDaily(target);
         } catch (Exception ex) {
-            log.error("aggregate overview metrics failed, date={}", target, ex);
+            log.error("aggregate mysql overview metrics failed, date={}", target, ex);
+        }
+        try {
+            overviewMetricAggregator.aggregateClickhouseDaily(target);
+        } catch (Exception ex) {
+            log.error("aggregate clickhouse overview metrics failed, date={}", target, ex);
         }
     }
 }

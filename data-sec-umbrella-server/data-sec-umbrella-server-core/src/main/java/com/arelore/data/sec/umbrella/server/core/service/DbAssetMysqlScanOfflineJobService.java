@@ -59,13 +59,13 @@ public interface DbAssetMysqlScanOfflineJobService extends IService<DbAssetMysql
     /**
      * 手动触发执行：创建一条「等待运行」的实例并返回实例 ID；具体分发由 {@link TaskManager} 完成。
      */
-    Long execute(DbAssetMysqlScanOfflineJobIdRequest request);
+    Long execute(DbAssetMysqlScanOfflineJobIdRequest request, String apiDatabaseType);
 
     /**
-     * 通过任务名获取最新任务配置（按 id 倒序）。
+     * 通过任务名与引擎获取最新任务配置（按 id 倒序）。
      *
-     * @param taskName 任务名
-     * @return 最新任务配置
+     * @param taskName     任务名
+     * @param databaseType MySQL / Clickhouse（{@link com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType}）
      */
-    DbAssetMysqlScanOfflineJob findLatestByTaskName(String taskName);
+    DbAssetMysqlScanOfflineJob findLatestByTaskName(String taskName, String databaseType);
 }

@@ -84,4 +84,10 @@ public class DbAssetMysqlScanOfflineJob {
      */
     @TableField("enabled_status")
     private Integer enabledStatus;
+
+    /**
+     * 数据库产品类型：MySQL / Clickhouse（与策略、数据源类型对齐）
+     */
+    @TableField("database_type")
+    private String databaseType;
 }

@@ -31,6 +31,14 @@ const router = createBrowserRouter([
             element: <DatabaseSecurity />,
           },
           {
+            path: 'overview/mysql',
+            element: <DatabaseSecurity />,
+          },
+          {
+            path: 'overview/clickhouse',
+            element: <DatabaseSecurity />,
+          },
+          {
             path: 'policy-management',
             element: <DatabaseSecurity />,
             children: [
@@ -87,6 +95,18 @@ const router = createBrowserRouter([
             element: <ClickhouseAsset />,
           },
           {
+            path: 'data-asset/clickhouse/instance',
+            element: <ClickhouseAsset />,
+          },
+          {
+            path: 'data-asset/clickhouse/database',
+            element: <ClickhouseAsset />,
+          },
+          {
+            path: 'data-asset/clickhouse/table',
+            element: <ClickhouseAsset />,
+          },
+          {
             path: 'data-asset',
             element: <DatabaseSecurity />,
           },
@@ -131,6 +151,20 @@ const router = createBrowserRouter([
                   {
                     path: 'clickhouse',
                     element: <DatabaseSecurity />,
+                    children: [
+                      {
+                        path: '',
+                        element: <DatabaseSecurity />,
+                      },
+                      {
+                        path: 'config',
+                        element: <DatabaseSecurity />,
+                      },
+                      {
+                        path: 'instances',
+                        element: <DatabaseSecurity />,
+                      },
+                    ],
                   },
                 ],
               },

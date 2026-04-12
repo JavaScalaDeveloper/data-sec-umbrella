@@ -1,8 +1,8 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Alert, Button, Card, Form, Input, message, Modal, Select, Space, Table, Tabs, Tag, Tooltip} from 'antd';
 import type {ColumnsType} from 'antd/es/table';
 import {SearchOutlined} from '@ant-design/icons';
-import {mysqlOfflineScanJobInstanceApi} from '../../services/api';
+import {clickhouseOfflineScanJobInstanceApi, mysqlOfflineScanJobInstanceApi} from '../../services/api';
 
 const {Option} = Select;
 
@@ -86,7 +86,16 @@ const parseColumnDetailsPayload = (raw: string): { rows: SnapshotColumnDetailRow
     }
 };
 
-const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
+export type BatchOfflineScanJobInstancePanelVariant = 'mysql' | 'clickhouse';
+
+const BatchMysqlOfflineScanJobInstancePanel: React.FC<{variant?: BatchOfflineScanJobInstancePanelVariant}> = ({
+    variant = 'mysql',
+}) => {
+    const instanceApi = useMemo(
+        () =>
+            variant === 'clickhouse' ? clickhouseOfflineScanJobInstanceApi : mysqlOfflineScanJobInstanceApi,
+        [variant],
+    );
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [list, setList] = useState<any[]>([]);
@@ -123,7 +132,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         setLoading(true);
         try {
             const q = form.getFieldsValue();
-            const res = await mysqlOfflineScanJobInstanceApi.getPage({
+            const res = await instanceApi.getPage({
                 current: page,
                 size: pageSize,
                 taskName: q.taskName || undefined,
@@ -145,7 +154,35 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [form]);
+    }, [form, instanceApi]);
+
+    const stopInstance = useCallback(
+        (id: number) => {
+            Modal.confirm({
+                title: '确认停止该实例？',
+                content:
+                    '停止后将把实例标记为「已停止」，并更新 Redis 中的派发版本号；已在队列中、携带旧版本号的扫描消息将在 Worker 侧校验失败后直接丢弃。',
+                okText: '停止',
+                okType: 'danger',
+                cancelText: '取消',
+                onOk: async () => {
+                    try {
+                        const res = await instanceApi.stop(id);
+                        if (res.code === 200) {
+                            message.success('已停止');
+                            await fetchList(pagination.current, pagination.pageSize);
+                        } else {
+                            message.error(res.message || '停止失败');
+                        }
+                    } catch (e) {
+                        message.error('网络请求失败');
+                        console.error(e);
+                    }
+                },
+            });
+        },
+        [fetchList, instanceApi, pagination.current, pagination.pageSize],
+    );
 
     useEffect(() => {
         fetchList(1, 10);
@@ -158,7 +195,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
         const f = snapshotFilterRef.current;
         setSnapshotLoading(true);
         try {
-            const res = await mysqlOfflineScanJobInstanceApi.getSnapshotDetail({
+            const res = await instanceApi.getSnapshotDetail({
                 id: snapshotInstanceId,
                 scanKind: snapshotScanKind,
                 uniqueKeyContains: f.uniqueKey.trim() || undefined,
@@ -184,6 +221,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
             setSnapshotLoading(false);
         }
     }, [
+        instanceApi,
         snapshotInstanceId,
         snapshotScanKind,
         snapshotTablePage,
@@ -407,7 +445,7 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
                         size="small"
                         danger
                         disabled={record.runStatus !== 'running' && record.runStatus !== 'waiting'}
-                        onClick={() => message.info(`停止实例：${record.id}`)}
+                        onClick={() => stopInstance(Number(record.id))}
                     >
                         停止
                     </Button>
@@ -418,6 +456,14 @@ const BatchMysqlOfflineScanJobInstancePanel: React.FC = () => {
 
     return (
         <>
+            {/*{variant === 'clickhouse' && (*/}
+            {/*    <Alert*/}
+            {/*        type="info"*/}
+            {/*        showIcon*/}
+            {/*        style={{marginBottom: 16}}*/}
+            {/*        message="本页调用 ClickHouse 专用实例接口（/api/db-asset/clickhouse/offline-scan-job/instance/*），与 MySQL 页共用实例表；快照仍依赖管理端 ClickHouse 与分析库配置。"*/}
+            {/*    />*/}
+            {/*)}*/}
             <Modal
                 title={snapshotInstanceId != null ? `扫描快照（实例 ID ${snapshotInstanceId}）` : '扫描快照'}
                 open={snapshotOpen}

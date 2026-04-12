@@ -1,5 +1,6 @@
 package com.arelore.data.sec.umbrella.server.core.strategy;
 
+import com.arelore.data.sec.umbrella.server.core.strategy.impl.ClickHouseConnectionStrategy;
 import com.arelore.data.sec.umbrella.server.core.strategy.impl.MySQLConnectionStrategy;
 import com.arelore.data.sec.umbrella.server.core.strategy.impl.OracleConnectionStrategy;
 
@@ -17,6 +18,7 @@ public class DatabaseConnectionStrategyFactory {
         // 初始化策略映射
         STRATEGY_MAP.put("MySQL", new MySQLConnectionStrategy());
         STRATEGY_MAP.put("Oracle", new OracleConnectionStrategy());
+        STRATEGY_MAP.put("Clickhouse", new ClickHouseConnectionStrategy());
     }
 
     /**

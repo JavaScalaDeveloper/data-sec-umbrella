@@ -5,15 +5,19 @@ import com.arelore.data.sec.umbrella.server.core.constant.RSAKeyConstants;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineJobConfigSnapshot;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflinePolicySnapshot;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyAssetSample;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyClassificationRule;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyRuleDetectionRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyRuleDetectionResponse;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.DataSource;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.service.DataSourceService;
 import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
 import com.arelore.data.sec.umbrella.server.core.service.checker.RulesChecker;
 import com.arelore.data.sec.umbrella.server.core.service.factory.RulesCheckerFactory;
+import com.arelore.data.sec.umbrella.server.core.util.JdbcSampleCellFormatter;
 import com.arelore.data.sec.umbrella.server.core.util.RSACryptoUtil;
+import com.arelore.data.sec.umbrella.server.worker.task.OfflineAiScanDispatchService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +54,7 @@ public class MySQLAssetScanner implements AssetScanner {
 
     private final DataSourceService dataSourceService;
     private final MySQLTableInfoService mySQLTableInfoService;
+    private final OfflineAiScanDispatchService offlineAiScanDispatchService;
 
     /**
      * {@inheritDoc}
@@ -70,14 +75,15 @@ public class MySQLAssetScanner implements AssetScanner {
         String tableName = str(asset.get("tableName"));
 
         boolean needFetch = payload.getJobConfig() != null && Integer.valueOf(1).equals(payload.getJobConfig().getEnableSampling());
-        List<DatabasePolicyTestRulesRequest.TestData> samples = needFetch
+        List<DatabasePolicyAssetSample> samples = needFetch
                 ? fetchSamples(payload, instance, databaseName, tableName)
                 : buildEmptySample(databaseName, tableName);
 
-        RuleResult result = evaluatePolicies(samples, payload.getPolicies());
-        List<AssetScanResult.ColumnScanInfoItem> columnScanInfo = buildColumnScanInfo(samples, payload.getPolicies());
+        List<OfflinePolicySnapshot> policies = filterPoliciesForCurrentDatabaseType(payload.getPolicies());
+        RuleResult result = evaluatePolicies(samples, policies);
+        List<AssetScanResult.ColumnScanInfoItem> columnScanInfo = buildColumnScanInfo(samples, policies);
         updateMysqlTableAsset(instance, databaseName, tableName, result, columnScanInfo);
-        return new AssetScanResult(
+        AssetScanResult scanResult = new AssetScanResult(
                 result.maxLevel() > 0,
                 assetId,
                 "MySQL",
@@ -86,9 +92,11 @@ public class MySQLAssetScanner implements AssetScanner {
                 columnScanInfo,
                 samples
         );
+        offlineAiScanDispatchService.dispatchIfNeeded(payload, asset, scanResult);
+        return scanResult;
     }
 
-    private List<DatabasePolicyTestRulesRequest.TestData> fetchSamples(
+    private List<DatabasePolicyAssetSample> fetchSamples(
             OfflineDatabaseScanDispatchPayload payload,
             String instance,
             String db,
@@ -122,7 +130,7 @@ public class MySQLAssetScanner implements AssetScanner {
                 try (PreparedStatement ps = conn.prepareStatement(sqlRand)) {
                     ps.setInt(1, limit);
                     try (ResultSet rs = ps.executeQuery()) {
-                        return mergeResultSetRowsIntoTestData(rs, db, table);
+                        return mergeResultSetRowsIntoSamples(rs, db, table);
                     }
                 }
             }
@@ -133,7 +141,7 @@ public class MySQLAssetScanner implements AssetScanner {
                     try (PreparedStatement ps = conn.prepareStatement(sql)) {
                         ps.setInt(1, limit);
                         try (ResultSet rs = ps.executeQuery()) {
-                            return mergeResultSetRowsIntoTestData(rs, db, table);
+                            return mergeResultSetRowsIntoSamples(rs, db, table);
                         }
                     }
                 }
@@ -141,7 +149,7 @@ public class MySQLAssetScanner implements AssetScanner {
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setInt(1, limit);
                     try (ResultSet rs = ps.executeQuery()) {
-                        return mergeResultSetRowsIntoTestData(rs, db, table);
+                        return mergeResultSetRowsIntoSamples(rs, db, table);
                     }
                 }
             }
@@ -152,7 +160,7 @@ public class MySQLAssetScanner implements AssetScanner {
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setInt(1, limit);
                     try (ResultSet rs = ps.executeQuery()) {
-                        return mergeResultSetRowsIntoTestData(rs, db, table);
+                        return mergeResultSetRowsIntoSamples(rs, db, table);
                     }
                 }
             }
@@ -160,7 +168,7 @@ public class MySQLAssetScanner implements AssetScanner {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, limit);
                 try (ResultSet rs = ps.executeQuery()) {
-                    return mergeResultSetRowsIntoTestData(rs, db, table);
+                    return mergeResultSetRowsIntoSamples(rs, db, table);
                 }
             }
         } catch (Exception ex) {
@@ -276,7 +284,7 @@ public class MySQLAssetScanner implements AssetScanner {
             Map<String, String> row = new LinkedHashMap<>();
             for (int i = 1; i <= colCount; i++) {
                 Object o = rs.getObject(i);
-                row.put(labels.get(i - 1), o == null ? "" : String.valueOf(o));
+                row.put(labels.get(i - 1), JdbcSampleCellFormatter.toSampleString(o));
             }
             rows.add(row);
         }
@@ -307,7 +315,7 @@ public class MySQLAssetScanner implements AssetScanner {
         return null;
     }
 
-    private static List<DatabasePolicyTestRulesRequest.TestData> mergeResultSetRowsIntoTestData(
+    private static List<DatabasePolicyAssetSample> mergeResultSetRowsIntoSamples(
             ResultSet rs,
             String db,
             String table
@@ -316,7 +324,7 @@ public class MySQLAssetScanner implements AssetScanner {
         return mergeRowMapsToSamples(rows, db, table);
     }
 
-    private static List<DatabasePolicyTestRulesRequest.TestData> mergeRowMapsToSamples(
+    private static List<DatabasePolicyAssetSample> mergeRowMapsToSamples(
             List<Map<String, String>> rows,
             String db,
             String table
@@ -334,9 +342,9 @@ public class MySQLAssetScanner implements AssetScanner {
                 acc.get(col).add(row.getOrDefault(col, ""));
             }
         }
-        List<DatabasePolicyTestRulesRequest.TestData> list = new ArrayList<>();
+        List<DatabasePolicyAssetSample> list = new ArrayList<>();
         for (Map.Entry<String, List<String>> e : acc.entrySet()) {
-            DatabasePolicyTestRulesRequest.TestData td = new DatabasePolicyTestRulesRequest.TestData();
+            DatabasePolicyAssetSample td = new DatabasePolicyAssetSample();
             td.setDatabaseName(db);
             td.setTableName(table);
             td.setColumnName(e.getKey());
@@ -354,7 +362,22 @@ public class MySQLAssetScanner implements AssetScanner {
         return name == null ? "" : name.replace("`", "``");
     }
 
-    private RuleResult evaluatePolicies(List<DatabasePolicyTestRulesRequest.TestData> samples, List<OfflinePolicySnapshot> policies) {
+    /**
+     * 仅保留与当前扫描器数据库类型一致的策略（本扫描器为 MySQL）。
+     */
+    private List<OfflinePolicySnapshot> filterPoliciesForCurrentDatabaseType(List<OfflinePolicySnapshot> policies) {
+        if (policies == null || policies.isEmpty()) {
+            return policies == null ? List.of() : policies;
+        }
+        String expected = databaseType();
+        return policies.stream()
+                .filter(p -> p != null
+                        && StringUtils.hasText(p.getDatabaseType())
+                        && expected.equalsIgnoreCase(p.getDatabaseType().trim()))
+                .collect(Collectors.toList());
+    }
+
+    private RuleResult evaluatePolicies(List<DatabasePolicyAssetSample> samples, List<OfflinePolicySnapshot> policies) {
         int maxLevel = 0;
         Set<String> tags = new LinkedHashSet<>();
         RulesChecker checker = RulesCheckerFactory.getRulesChecker("MySQL");
@@ -362,13 +385,13 @@ public class MySQLAssetScanner implements AssetScanner {
             return new RuleResult(maxLevel, tags);
         }
         for (OfflinePolicySnapshot p : policies) {
-            DatabasePolicyTestRulesRequest req = new DatabasePolicyTestRulesRequest();
+            DatabasePolicyRuleDetectionRequest req = new DatabasePolicyRuleDetectionRequest();
             req.setDatabaseType("MySQL");
             req.setRuleExpression(p.getRuleExpression());
             req.setAiRule(p.getAiRule());
             req.setClassificationRules(parseClassificationRules(p.getClassificationRules()));
-            req.setTestData(samples);
-            DatabasePolicyTestRulesResponse resp = checker.checkRules(req);
+            req.setSamples(samples);
+            DatabasePolicyRuleDetectionResponse resp = checker.checkRules(req);
             if (resp != null && resp.isRulePassed()) {
                 if (p.getSensitivityLevel() != null) {
                     maxLevel = Math.max(maxLevel, p.getSensitivityLevel());
@@ -381,19 +404,19 @@ public class MySQLAssetScanner implements AssetScanner {
         return new RuleResult(maxLevel, tags);
     }
 
-    private List<DatabasePolicyTestRulesRequest.ClassificationRule> parseClassificationRules(String rulesJson) {
+    private List<DatabasePolicyClassificationRule> parseClassificationRules(String rulesJson) {
         if (!StringUtils.hasText(rulesJson)) {
             return List.of();
         }
         try {
-            return JSON.parseArray(rulesJson, DatabasePolicyTestRulesRequest.ClassificationRule.class);
+            return JSON.parseArray(rulesJson, DatabasePolicyClassificationRule.class);
         } catch (Exception ex) {
             return List.of();
         }
     }
 
     private List<AssetScanResult.ColumnScanInfoItem> buildColumnScanInfo(
-            List<DatabasePolicyTestRulesRequest.TestData> samples,
+            List<DatabasePolicyAssetSample> samples,
             List<OfflinePolicySnapshot> policies
     ) {
         if (samples == null || samples.isEmpty()) {
@@ -410,17 +433,17 @@ public class MySQLAssetScanner implements AssetScanner {
             )).collect(Collectors.toList());
         }
         List<AssetScanResult.ColumnScanInfoItem> info = new ArrayList<>();
-        for (DatabasePolicyTestRulesRequest.TestData sample : samples) {
+        for (DatabasePolicyAssetSample sample : samples) {
             int level = 0;
             Set<String> tags = new LinkedHashSet<>();
             List<String> sensitiveSamples = new ArrayList<>();
             for (OfflinePolicySnapshot p : policies) {
-                DatabasePolicyTestRulesRequest req = new DatabasePolicyTestRulesRequest();
+                DatabasePolicyRuleDetectionRequest req = new DatabasePolicyRuleDetectionRequest();
                 req.setDatabaseType("MySQL");
                 req.setRuleExpression(p.getRuleExpression());
                 req.setClassificationRules(parseClassificationRules(p.getClassificationRules()));
-                req.setTestData(List.of(sample));
-                DatabasePolicyTestRulesResponse resp = checker.checkRules(req);
+                req.setSamples(List.of(sample));
+                DatabasePolicyRuleDetectionResponse resp = checker.checkRules(req);
                 if (resp != null && resp.isRulePassed()) {
                     if (p.getSensitivityLevel() != null) {
                         level = Math.max(level, p.getSensitivityLevel());
@@ -461,8 +484,8 @@ public class MySQLAssetScanner implements AssetScanner {
         mySQLTableInfoService.updateById(row);
     }
 
-    private static List<DatabasePolicyTestRulesRequest.TestData> buildEmptySample(String db, String table) {
-        DatabasePolicyTestRulesRequest.TestData td = new DatabasePolicyTestRulesRequest.TestData();
+    private static List<DatabasePolicyAssetSample> buildEmptySample(String db, String table) {
+        DatabasePolicyAssetSample td = new DatabasePolicyAssetSample();
         td.setDatabaseName(db);
         td.setTableName(table);
         td.setColumnValues(List.of());

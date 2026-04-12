@@ -2,14 +2,14 @@ package com.arelore.data.sec.umbrella.server.core.service.impl.policy;
 
 import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyQueryRequest;
 import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyRequest;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyRuleDetectionRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.llm.AiRuleResult;
 import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyResponse;
-import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyTestRulesResponse;
+import com.arelore.data.sec.umbrella.server.core.dto.response.DatabasePolicyRuleDetectionResponse;
 import com.arelore.data.sec.umbrella.server.core.dto.response.PageResponse;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.DatabasePolicy;
 import com.arelore.data.sec.umbrella.server.core.mapper.DatabasePolicyMapper;
 import com.arelore.data.sec.umbrella.server.core.service.DatabasePolicyService;
-import com.arelore.data.sec.umbrella.server.core.service.llm.AiRuleLlmService;
 import com.arelore.data.sec.umbrella.server.core.service.checker.RulesChecker;
 import com.arelore.data.sec.umbrella.server.core.service.factory.RulesCheckerFactory;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -33,12 +33,6 @@ import java.util.stream.Collectors;
  */
 @Service
 public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper, DatabasePolicy> implements DatabasePolicyService {
-    private final AiRuleLlmService aiRuleLlmService;
-
-    public DatabasePolicyServiceImpl(AiRuleLlmService aiRuleLlmService) {
-        this.aiRuleLlmService = aiRuleLlmService;
-    }
-
 
     @Override
     public PageResponse<DatabasePolicyResponse> getPage(DatabasePolicyQueryRequest request) {
@@ -164,166 +158,49 @@ public class DatabasePolicyServiceImpl extends ServiceImpl<DatabasePolicyMapper,
     }
 
     @Override
-    public DatabasePolicyTestRulesResponse testRules(DatabasePolicyTestRulesRequest request) {
-        // 兼容旧接口：组合规则 + AI 两部分
-        DatabasePolicyTestRulesResponse ruleResp = testRulesOnly(request);
-        DatabasePolicyTestRulesResponse aiResp = testAiRule(request);
+    public DatabasePolicyRuleDetectionResponse executeRuleDetection(DatabasePolicyRuleDetectionRequest request) {
+        DatabasePolicyRuleDetectionResponse ruleResp = executeStructuredRuleDetection(request);
+        DatabasePolicyRuleDetectionResponse aiResp = executeAiRuleDetection(request);
         ruleResp.setAiPassed(aiResp.isAiPassed());
         ruleResp.setAiDetail(aiResp.getAiDetail());
         return ruleResp;
     }
 
     @Override
-    public DatabasePolicyTestRulesResponse testRulesOnly(DatabasePolicyTestRulesRequest request) {
+    public DatabasePolicyRuleDetectionResponse executeStructuredRuleDetection(DatabasePolicyRuleDetectionRequest request) {
         String databaseType = request.getDatabaseType();
-        // 根据数据库类型获取对应的规则检查器
         RulesChecker rulesChecker = RulesCheckerFactory.getRulesChecker(databaseType);
         if (rulesChecker == null) {
-            DatabasePolicyTestRulesResponse response = new DatabasePolicyTestRulesResponse();
+            DatabasePolicyRuleDetectionResponse response = new DatabasePolicyRuleDetectionResponse();
             response.setRulePassed(false);
             response.setAiPassed(false);
             response.setAiDetail("不支持的数据库类型: " + databaseType);
             return response;
         }
 
-        DatabasePolicyTestRulesResponse all = rulesChecker.checkRules(request);
-        // 仅保留规则侧结果，避免 test-rules 触发 LLM 网络调用
+        DatabasePolicyRuleDetectionResponse all = rulesChecker.checkRules(request);
         all.setAiPassed(false);
-        all.setAiDetail("AI规则未执行（请调用 /api/database-policy/test-ai-rules-stream）");
+        all.setAiDetail("AI规则未执行（请调用 POST /api/database-policy/rule-detection-ai-stream）");
         return all;
     }
 
     @Override
-    public DatabasePolicyTestRulesResponse testAiRule(DatabasePolicyTestRulesRequest request) {
-        DatabasePolicyTestRulesResponse response = new DatabasePolicyTestRulesResponse();
-        AiRuleLlmService.AiRuleResult result =
-                aiRuleLlmService.evaluate(request.getDatabaseType(), request.getAiRule(), request.getTestData());
+    public DatabasePolicyRuleDetectionResponse executeAiRuleDetection(DatabasePolicyRuleDetectionRequest request) {
+        DatabasePolicyRuleDetectionResponse response = new DatabasePolicyRuleDetectionResponse();
+        RulesChecker rulesChecker = RulesCheckerFactory.getRulesChecker(request.getDatabaseType());
+        if (rulesChecker == null) {
+            response.setRulePassed(false);
+            response.setAiPassed(false);
+            response.setAiDetail("不支持的数据库类型: " + request.getDatabaseType());
+            return response;
+        }
+        AiRuleResult result = rulesChecker.checkAiRules(request.getAiRule(), request.getSamples());
         response.setRulePassed(false);
         response.setAiPassed(result.passed());
         response.setAiDetail(result.detail());
-        if (result.passed() && request.getTestData() != null && !request.getTestData().isEmpty()) {
-            // 当前AI规则是对整批样例判断，命中时将本次参与判断的样例返回前端用于人工复核
-            response.setAiSensitiveSamples(request.getTestData());
+        if (result.passed() && request.getSamples() != null && !request.getSamples().isEmpty()) {
+            response.setAiSensitiveSamples(request.getSamples());
         }
         return response;
-    }
-    
-    /**
-     * 测试单个分类规则
-     */
-    private boolean testSingleRule(DatabasePolicyTestRulesRequest.ClassificationRule rule, 
-                                  List<DatabasePolicyTestRulesRequest.TestData> testData) {
-        if (testData == null || testData.isEmpty()) {
-            return false;
-        }
-        
-        String conditionObject = rule.getConditionObject();
-        String conditionType = rule.getConditionType();
-        String expression = rule.getExpression();
-        
-        for (DatabasePolicyTestRulesRequest.TestData data : testData) {
-            String value = getValueByConditionObject(data, conditionObject);
-            if (value != null && matchCondition(value, conditionType, expression)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * 根据条件对象获取对应的值
-     */
-    private String getValueByConditionObject(DatabasePolicyTestRulesRequest.TestData data, String conditionObject) {
-        switch (conditionObject) {
-            case "库名":
-                return data.getDatabaseName();
-            case "库描述":
-                return data.getDatabaseDescription();
-            case "表名":
-                return data.getTableName();
-            case "表描述":
-                return data.getTableDescription();
-            case "列名":
-                return data.getColumnName();
-            case "列描述":
-                return data.getColumnDescription();
-            case "列值":
-                // 如果是列值，返回第一个列值用于测试
-                if (data.getColumnValues() != null && !data.getColumnValues().isEmpty()) {
-                    return data.getColumnValues().get(0);
-                }
-                return null;
-            default:
-                return null;
-        }
-    }
-    
-    /**
-     * 根据条件类型匹配值
-     */
-    private boolean matchCondition(String value, String conditionType, String expression) {
-        if (value == null || expression == null) {
-            return false;
-        }
-        
-        switch (conditionType) {
-            case "包含":
-                return value.contains(expression);
-            case "不包含":
-                return !value.contains(expression);
-            case "等于":
-                return value.equals(expression);
-            case "不等于":
-                return !value.equals(expression);
-            case "以...开头":
-                return value.startsWith(expression);
-            case "不以...开头":
-                return !value.startsWith(expression);
-            case "以...结尾":
-                return value.endsWith(expression);
-            case "不以...结尾":
-                return !value.endsWith(expression);
-            case "正则匹配":
-                try {
-                    return value.matches(expression);
-                } catch (Exception e) {
-                    return false;
-                }
-            case "非正则匹配":
-                try {
-                    return !value.matches(expression);
-                } catch (Exception e) {
-                    return false;
-                }
-            default:
-                return false;
-        }
-    }
-    
-    /**
-     * 测试规则表达式
-     */
-    private boolean testRuleExpression(String ruleExpression, List<DatabasePolicyTestRulesRequest.TestData> testData) {
-        if (ruleExpression == null || ruleExpression.trim().isEmpty()) {
-            return false;
-        }
-        
-        // 简单的规则表达式测试，实际项目中可以使用规则引擎如eviator
-        // 这里只是模拟实现
-        return true;
-    }
-    
-    /**
-     * 测试AI规则
-     */
-    private boolean testAiRule(String aiRule, List<DatabasePolicyTestRulesRequest.TestData> testData) {
-        if (aiRule == null || aiRule.trim().isEmpty()) {
-            return false;
-        }
-        
-        // 简单的AI规则测试，实际项目中可以集成AI模型
-        // 这里只是模拟实现
-        return true;
     }
 }

@@ -5,6 +5,7 @@ import com.arelore.data.sec.umbrella.server.core.dto.request.OverviewMetricQuery
 import com.arelore.data.sec.umbrella.server.core.dto.response.OverviewMetricQueryResponse;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.OverviewMetricSnapshot;
 import com.arelore.data.sec.umbrella.server.core.enums.MetricPeriodEnum;
+import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType;
 import com.arelore.data.sec.umbrella.server.core.enums.OverviewMetricCodeEnum;
 import com.arelore.data.sec.umbrella.server.core.service.OverviewMetricSnapshotService;
 import com.arelore.data.sec.umbrella.server.manager.overview.OverviewMetricAggregator;
@@ -67,6 +68,10 @@ public class DatabaseOverviewController {
         List<String> codes;
         if ("MySQL".equalsIgnoreCase(databaseType)) {
             codes = OverviewMetricCodeEnum.mysqlCodes();
+        } else if (OfflineScanJobDatabaseType.CLICKHOUSE.equalsIgnoreCase(databaseType)
+                || "ClickHouse".equalsIgnoreCase(databaseType)) {
+            codes = OverviewMetricCodeEnum.clickhouseCodes();
+            databaseType = OfflineScanJobDatabaseType.CLICKHOUSE;
         } else {
             codes = List.of();
         }
@@ -86,7 +91,7 @@ public class DatabaseOverviewController {
     }
 
     /**
-     * 手动触发概览指标刷新（当前仅支持 MySQL 日级）。
+     * 手动触发概览指标日级重算（MySQL / Clickhouse）。
      */
     @PostMapping("/refresh")
     @AdminPermission(product = ProductCode.DATABASE, action = PermissionAction.WRITE)
@@ -94,15 +99,19 @@ public class DatabaseOverviewController {
         String databaseType = request != null && StringUtils.hasText(request.getDatabaseType())
                 ? request.getDatabaseType().trim()
                 : "MySQL";
-        if (!"MySQL".equalsIgnoreCase(databaseType)) {
-            return Result.error("当前仅支持MySQL刷新");
-        }
         String metricTime = request != null && StringUtils.hasText(request.getMetricTime())
                 ? request.getMetricTime().trim()
                 : DAY_FMT.format(LocalDate.now());
         try {
             LocalDate day = LocalDate.parse(metricTime, DAY_FMT);
-            overviewMetricAggregator.aggregateMysqlDaily(day);
+            if ("MySQL".equalsIgnoreCase(databaseType)) {
+                overviewMetricAggregator.aggregateMysqlDaily(day);
+            } else if (OfflineScanJobDatabaseType.CLICKHOUSE.equalsIgnoreCase(databaseType)
+                    || "ClickHouse".equalsIgnoreCase(databaseType)) {
+                overviewMetricAggregator.aggregateClickhouseDaily(day);
+            } else {
+                return Result.error("不支持的 databaseType，请使用 MySQL 或 Clickhouse");
+            }
             return Result.success(true);
         } catch (Exception ex) {
             return Result.error("刷新失败: " + ex.getMessage());

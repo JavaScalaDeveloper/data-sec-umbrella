@@ -1,6 +1,7 @@
 package com.arelore.data.sec.umbrella.server.manager.clickhouse;
 
 import com.alibaba.fastjson2.JSON;
+import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanJobDatabaseType;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
 import org.springframework.util.StringUtils;
 
@@ -9,7 +10,7 @@ import java.util.Map;
 /**
  * 从任务实例解析快照写入 ClickHouse 时使用的 engine（与 Worker MQ 消息中 engine 一致）。
  * <p>
- * 优先读取实例 {@code extend_info.assetEngine}（由分发任务写入）；缺失时默认 MySQL（本模块为 MySQL 离线扫描）。
+ * 优先 {@code database_type} 列；其次 {@code extend_info.assetEngine}；缺省为 MySQL。
  */
 public final class OfflineScanSnapshotAssetEngineResolver {
 
@@ -17,6 +18,12 @@ public final class OfflineScanSnapshotAssetEngineResolver {
     }
 
     public static String resolve(DbAssetMysqlScanOfflineJobInstance inst) {
+        if (inst != null && StringUtils.hasText(inst.getDatabaseType())) {
+            if (OfflineScanJobDatabaseType.CLICKHOUSE.equals(OfflineScanJobDatabaseType.normalizeInstance(inst.getDatabaseType()))) {
+                return "Clickhouse";
+            }
+            return "MySQL";
+        }
         if (inst == null || !StringUtils.hasText(inst.getExtendInfo())) {
             return "MySQL";
         }

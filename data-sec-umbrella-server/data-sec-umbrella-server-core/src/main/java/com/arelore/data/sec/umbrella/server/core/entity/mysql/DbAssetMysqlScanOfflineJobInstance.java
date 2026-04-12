@@ -84,4 +84,10 @@ public class DbAssetMysqlScanOfflineJobInstance {
 
     @TableField("extend_info")
     private String extendInfo;
+
+    /**
+     * 与关联任务一致：MySQL / Clickhouse
+     */
+    @TableField("database_type")
+    private String databaseType;
 }

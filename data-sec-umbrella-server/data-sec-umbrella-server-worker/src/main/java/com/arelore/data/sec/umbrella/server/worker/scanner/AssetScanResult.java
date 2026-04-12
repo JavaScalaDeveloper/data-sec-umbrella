@@ -1,6 +1,6 @@
 package com.arelore.data.sec.umbrella.server.worker.scanner;
 
-import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
+import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyAssetSample;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ public record AssetScanResult(
         Integer maxLevel,
         List<String> tags,
         List<ColumnScanInfoItem> columnScanInfo,
-        List<DatabasePolicyTestRulesRequest.TestData> samples
+        List<DatabasePolicyAssetSample> samples
 ) {
     /**
      * 列扫描信息。

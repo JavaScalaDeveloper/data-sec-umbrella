@@ -40,6 +40,11 @@
             <artifactId>clickhouse-jdbc</artifactId>
             <version>0.6.0</version>
         </dependency>
+        <!-- ClickHouse JDBC 使用 APACHE_HTTP_CLIENT 时需 HttpCore5（ClassicHttpRequest 等），否则 NoClassDefFoundError 并回退 URLConnection -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
         <!-- ClickHouse HTTP 响应 LZ4 解压；不配 compress=0 时需此包，否则报 LZ4 is not supported -->
         <dependency>
             <groupId>org.lz4</groupId>

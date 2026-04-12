@@ -13,4 +13,9 @@ public class DbAssetMysqlScanOfflineJobQueryRequest extends PageRequest {
      * 任务名（模糊）
      */
     private String taskName;
+
+    /**
+     * 引擎过滤：MySQL / Clickhouse（由 Controller 按路径写入，用于列表隔离）
+     */
+    private String databaseType;
 }

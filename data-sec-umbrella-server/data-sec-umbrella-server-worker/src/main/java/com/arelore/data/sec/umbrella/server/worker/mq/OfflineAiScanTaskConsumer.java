@@ -3,6 +3,7 @@ package com.arelore.data.sec.umbrella.server.worker.mq;
 import com.alibaba.fastjson2.JSON;
 import com.arelore.data.sec.umbrella.server.core.constant.OfflineScanConstants;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
+import com.arelore.data.sec.umbrella.server.worker.config.TaskWorkerExecutorBeans;
 import com.arelore.data.sec.umbrella.server.worker.executor.TaskWorkerExecutorManager;
 import com.arelore.data.sec.umbrella.server.worker.task.OfflineScanTaskProcessor;
 import com.rabbitmq.client.Channel;
@@ -32,7 +33,7 @@ public class OfflineAiScanTaskConsumer {
     private final StringRedisTemplate stringRedisTemplate;
 
     public OfflineAiScanTaskConsumer(@Qualifier("offlineAiScanTaskProcessor") OfflineScanTaskProcessor offlineAiScanTaskProcessor,
-                                     TaskWorkerExecutorManager executorManager,
+                                     @Qualifier(TaskWorkerExecutorBeans.AI_SCAN_EXECUTOR) TaskWorkerExecutorManager executorManager,
                                      StringRedisTemplate stringRedisTemplate) {
         this.offlineAiScanTaskProcessor = offlineAiScanTaskProcessor;
         this.executorManager = executorManager;

@@ -1,55 +1,48 @@
 package com.arelore.data.sec.umbrella.server.worker.task;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.TypeReference;
 import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineDatabaseScanDispatchPayload;
-import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflinePolicySnapshot;
-import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineScanSensitivitySnapshotMessage;
-import com.arelore.data.sec.umbrella.server.core.dto.messaging.OfflineScanSnapshotUniqueKey;
-import com.arelore.data.sec.umbrella.server.core.dto.request.DatabasePolicyTestRulesRequest;
 import com.arelore.data.sec.umbrella.server.core.entity.mysql.DbAssetMysqlScanOfflineJobInstance;
-import com.arelore.data.sec.umbrella.server.core.entity.mysql.MySQLTableInfo;
 import com.arelore.data.sec.umbrella.server.core.enums.OfflineJobRunStatusEnum;
 import com.arelore.data.sec.umbrella.server.core.service.DbAssetMysqlScanOfflineJobInstanceService;
-import com.arelore.data.sec.umbrella.server.core.service.MySQLTableInfoService;
-import com.arelore.data.sec.umbrella.server.core.service.llm.AiRuleLlmService;
-import com.arelore.data.sec.umbrella.server.worker.mq.OfflineScanSnapshotPublisher;
-import com.arelore.data.sec.umbrella.server.worker.scanner.AssetScanResult;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+import com.arelore.data.sec.umbrella.server.worker.ai.AiAssetProcessOutcome;
+import com.arelore.data.sec.umbrella.server.worker.ai.OfflineAiAssetHandler;
+import com.arelore.data.sec.umbrella.server.worker.ai.OfflineAiScanSupport;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * AI 专用 Worker：消费 AI 队列，执行 AI 规则检测并回写资产。
- *
- * @author 黄佳豪
+ * AI 专用 Worker：按资产 {@code databaseType}（或任务 {@code engine}）路由到对应 {@link OfflineAiAssetHandler}。
  */
+@Slf4j
 @Service("offlineAiScanTaskProcessor")
 public class AiTaskWorkerImpl implements OfflineScanTaskProcessor {
 
-    private final AiRuleLlmService aiRuleLlmService;
-    private final MySQLTableInfoService mySQLTableInfoService;
+    private final List<OfflineAiAssetHandler> aiAssetHandlers;
     private final StringRedisTemplate stringRedisTemplate;
     private final DbAssetMysqlScanOfflineJobInstanceService jobInstanceService;
-    private final OfflineScanSnapshotPublisher offlineScanSnapshotPublisher;
 
-    public AiTaskWorkerImpl(AiRuleLlmService aiRuleLlmService,
-                            MySQLTableInfoService mySQLTableInfoService,
+    private final Map<String, OfflineAiAssetHandler> handlerByType = new ConcurrentHashMap<>();
+
+    public AiTaskWorkerImpl(List<OfflineAiAssetHandler> aiAssetHandlers,
                             StringRedisTemplate stringRedisTemplate,
-                            DbAssetMysqlScanOfflineJobInstanceService jobInstanceService,
-                            OfflineScanSnapshotPublisher offlineScanSnapshotPublisher) {
-        this.aiRuleLlmService = aiRuleLlmService;
-        this.mySQLTableInfoService = mySQLTableInfoService;
+                            DbAssetMysqlScanOfflineJobInstanceService jobInstanceService) {
+        this.aiAssetHandlers = aiAssetHandlers;
         this.stringRedisTemplate = stringRedisTemplate;
         this.jobInstanceService = jobInstanceService;
-        this.offlineScanSnapshotPublisher = offlineScanSnapshotPublisher;
+    }
+
+    @PostConstruct
+    public void registerAiHandlers() {
+        for (OfflineAiAssetHandler h : aiAssetHandlers) {
+            String key = OfflineAiScanSupport.normalizeDatabaseType(h.databaseType());
+            handlerByType.put(key, h);
+        }
     }
 
     @Override
@@ -60,193 +53,43 @@ public class AiTaskWorkerImpl implements OfflineScanTaskProcessor {
         Long instanceId = payload.getInstanceId();
         for (Map<String, Object> asset : payload.getAssets()) {
             try {
-                processOne(payload, asset);
-                incrementRedis(instanceId, "ai_success");
+                boolean llmInvocationFailed = processOne(payload, asset);
+                incrementRedis(instanceId, llmInvocationFailed ? "ai_fail" : "ai_success");
             } catch (Exception ex) {
+                log.error("ai processOne failed instanceId={}", instanceId, ex);
                 incrementRedis(instanceId, "ai_fail");
             }
         }
         syncAiInstanceProgress(instanceId);
     }
 
-    private void processOne(OfflineDatabaseScanDispatchPayload payload, Map<String, Object> asset) {
-        Long assetId = toLong(asset.get("assetId"));
-        if (assetId == null) {
-            assetId = toLong(asset.get("id"));
+    /**
+     * @return true 表示 LLM 基础设施类失败（与「模型判定未命中」区分），用于统计 ai_fail
+     */
+    private boolean processOne(OfflineDatabaseScanDispatchPayload payload, Map<String, Object> asset) {
+        OfflineAiAssetHandler handler = selectHandler(asset, payload);
+        if (handler == null) {
+            log.error("无可用 OfflineAiAssetHandler，databaseType={}", OfflineAiScanSupport.resolveDatabaseType(asset, payload));
+            return true;
         }
-        if (assetId == null) {
-            return;
+        AiAssetProcessOutcome outcome = handler.processOne(payload, asset);
+        if (outcome == null) {
+            return false;
         }
-        MySQLTableInfo tableInfo = mySQLTableInfoService.getById(assetId);
-        if (tableInfo == null) {
-            return;
-        }
-        List<DatabasePolicyTestRulesRequest.TestData> samples = parseSamples(asset.get("columnSamples"));
-        if (samples.isEmpty()) {
-            samples = extractSamplesFromColumnScanInfo(tableInfo.getColumnScanInfo(), tableInfo);
-        }
-        AiResult aiResult = evaluateAi(samples, payload.getPolicies());
-        tableInfo.setAiSensitivityLevel(String.valueOf(aiResult.maxLevel()));
-        tableInfo.setAiSensitivityTags(String.join(",", aiResult.tags()));
-        tableInfo.setColumnAiScanInfo(JSON.toJSONString(aiResult.columnInfo()));
-        mySQLTableInfoService.updateById(tableInfo);
-        publishAiScanSnapshot(payload, tableInfo, aiResult);
-        if (aiResult.maxLevel() > 0) {
+        if (outcome.sensitiveHit()) {
             incrementRedis(payload.getInstanceId(), "ai_sensitive");
         }
+        return outcome.llmInvocationFailed();
     }
 
-    private void publishAiScanSnapshot(OfflineDatabaseScanDispatchPayload payload, MySQLTableInfo tableInfo, AiResult aiResult) {
-        String engine = payload.getEngine();
-        if (!StringUtils.hasText(engine)) {
-            engine = "MySQL";
+    private OfflineAiAssetHandler selectHandler(Map<String, Object> asset, OfflineDatabaseScanDispatchPayload payload) {
+        String db = OfflineAiScanSupport.resolveDatabaseType(asset, payload);
+        OfflineAiAssetHandler h = handlerByType.get(db);
+        if (h != null) {
+            return h;
         }
-        String dataInstance = tableInfo.getInstance();
-        String databaseName = tableInfo.getDatabaseName();
-        String tableName = tableInfo.getTableName();
-        String tableKey = OfflineScanSnapshotUniqueKey.tableRowKey(dataInstance, databaseName, tableName);
-        OfflineScanSensitivitySnapshotMessage tableMsg = sensitivityRow(
-                payload,
-                "AI",
-                engine,
-                tableKey,
-                String.valueOf(aiResult.maxLevel()),
-                new ArrayList<>(aiResult.tags())
-        );
-        tableMsg.setColumnDetails(buildColumnDetailsJson(aiResult.columnInfo()));
-        offlineScanSnapshotPublisher.publishTableSnapshot(tableMsg);
-        List<AssetScanResult.ColumnScanInfoItem> columns = aiResult.columnInfo();
-        if (columns == null || columns.isEmpty()) {
-            return;
-        }
-        for (AssetScanResult.ColumnScanInfoItem col : columns) {
-            if (col == null || !StringUtils.hasText(col.columnName())) {
-                continue;
-            }
-            String colKey = OfflineScanSnapshotUniqueKey.columnRowKey(dataInstance, databaseName, tableName, col.columnName());
-            List<String> colTags = col.sensitivityTags() == null ? List.of() : col.sensitivityTags();
-            String colLevel = col.sensitivityLevel() == null ? "0" : col.sensitivityLevel();
-            OfflineScanSensitivitySnapshotMessage colMsg = sensitivityRow(payload, "AI", engine, colKey, colLevel, colTags);
-            colMsg.setSamples(col.samples() == null ? List.of() : col.samples());
-            colMsg.setSensitiveSamples(col.sensitiveSamples() == null ? List.of() : col.sensitiveSamples());
-            offlineScanSnapshotPublisher.publishColumnSnapshot(colMsg);
-        }
-    }
-
-    private static String buildColumnDetailsJson(List<AssetScanResult.ColumnScanInfoItem> items) {
-        if (items == null || items.isEmpty()) {
-            return "[]";
-        }
-        List<Map<String, Object>> list = new ArrayList<>(items.size());
-        for (AssetScanResult.ColumnScanInfoItem i : items) {
-            if (i == null) {
-                continue;
-            }
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("column_name", i.columnName());
-            m.put("samples", i.samples() == null ? List.of() : i.samples());
-            m.put("sensitive_samples", i.sensitiveSamples() == null ? List.of() : i.sensitiveSamples());
-            m.put("sensitivity_level", i.sensitivityLevel());
-            m.put("sensitivity_tags", i.sensitivityTags() == null ? List.of() : i.sensitivityTags());
-            list.add(m);
-        }
-        return JSON.toJSONString(list);
-    }
-
-    private static OfflineScanSensitivitySnapshotMessage sensitivityRow(
-            OfflineDatabaseScanDispatchPayload payload,
-            String scanKind,
-            String engine,
-            String uniqueKey,
-            String sensitivityLevel,
-            List<String> sensitivityTags) {
-        OfflineScanSensitivitySnapshotMessage m = new OfflineScanSensitivitySnapshotMessage();
-        m.setInstanceId(payload.getInstanceId());
-        m.setJobId(payload.getJobId());
-        m.setDispatchVersion(payload.getDispatchVersion());
-        m.setTaskName(payload.getTaskName());
-        m.setScanKind(scanKind);
-        m.setEngine(engine);
-        m.setEventTime(System.currentTimeMillis());
-        m.setUniqueKey(uniqueKey);
-        m.setSensitivityLevel(sensitivityLevel);
-        m.setSensitivityTags(sensitivityTags);
-        return m;
-    }
-
-    private AiResult evaluateAi(List<DatabasePolicyTestRulesRequest.TestData> samples, List<OfflinePolicySnapshot> policies) {
-        int maxLevel = 0;
-        Set<String> tags = new LinkedHashSet<>();
-        List<AssetScanResult.ColumnScanInfoItem> columnInfo = new ArrayList<>();
-        if (samples == null || samples.isEmpty() || policies == null || policies.isEmpty()) {
-            return new AiResult(maxLevel, tags, columnInfo);
-        }
-        for (DatabasePolicyTestRulesRequest.TestData sample : samples) {
-            int columnLevel = 0;
-            Set<String> columnTags = new LinkedHashSet<>();
-            List<String> sensitiveSamples = new ArrayList<>();
-            for (OfflinePolicySnapshot p : policies) {
-                if (!StringUtils.hasText(p.getAiRule())) {
-                    continue;
-                }
-                AiRuleLlmService.AiRuleResult result = aiRuleLlmService.evaluate("MySQL", p.getAiRule(), List.of(sample));
-                if (result != null && result.passed()) {
-                    if (p.getSensitivityLevel() != null) {
-                        columnLevel = Math.max(columnLevel, p.getSensitivityLevel());
-                        maxLevel = Math.max(maxLevel, p.getSensitivityLevel());
-                    }
-                    if (StringUtils.hasText(p.getPolicyCode())) {
-                        columnTags.add(p.getPolicyCode());
-                        tags.add(p.getPolicyCode());
-                    }
-                    if (sample.getColumnValues() != null) {
-                        sensitiveSamples.addAll(sample.getColumnValues());
-                    }
-                }
-            }
-            columnInfo.add(new AssetScanResult.ColumnScanInfoItem(
-                    sample.getColumnName(),
-                    String.valueOf(columnLevel),
-                    new ArrayList<>(columnTags),
-                    sensitiveSamples.stream().distinct().toList(),
-                    sample.getColumnValues() == null ? List.of() : sample.getColumnValues()
-            ));
-        }
-        return new AiResult(maxLevel, tags, columnInfo);
-    }
-
-    private List<DatabasePolicyTestRulesRequest.TestData> parseSamples(Object value) {
-        if (value == null) {
-            return List.of();
-        }
-        try {
-            return JSON.parseObject(JSON.toJSONString(value), new TypeReference<List<DatabasePolicyTestRulesRequest.TestData>>() {
-            });
-        } catch (Exception ex) {
-            return List.of();
-        }
-    }
-
-    private List<DatabasePolicyTestRulesRequest.TestData> extractSamplesFromColumnScanInfo(String columnScanInfo, MySQLTableInfo tableInfo) {
-        if (!StringUtils.hasText(columnScanInfo)) {
-            return List.of();
-        }
-        try {
-            List<AssetScanResult.ColumnScanInfoItem> items = JSON.parseObject(columnScanInfo, new TypeReference<List<AssetScanResult.ColumnScanInfoItem>>() {
-            });
-            List<DatabasePolicyTestRulesRequest.TestData> list = new ArrayList<>();
-            for (AssetScanResult.ColumnScanInfoItem item : items) {
-                DatabasePolicyTestRulesRequest.TestData td = new DatabasePolicyTestRulesRequest.TestData();
-                td.setDatabaseName(tableInfo.getDatabaseName());
-                td.setTableName(tableInfo.getTableName());
-                td.setColumnName(item.columnName());
-                td.setColumnValues(item.samples() == null ? List.of() : item.samples());
-                list.add(td);
-            }
-            return list;
-        } catch (Exception ex) {
-            return List.of();
-        }
+        log.warn("未注册 AI 引擎 [{}]，回退 MySQL", db);
+        return handlerByType.get("MySQL");
     }
 
     private void incrementRedis(Long instanceId, String metric) {
@@ -286,7 +129,6 @@ public class AiTaskWorkerImpl implements OfflineScanTaskProcessor {
         inst.setAiFailCount((int) Math.min(Integer.MAX_VALUE, cappedFail));
         inst.setAiSensitiveCount((int) Math.min(Integer.MAX_VALUE, sensitive));
         if (inst.getRunStatus() == null || OfflineJobRunStatusEnum.RUNNING.getValue().equals(inst.getRunStatus())) {
-            // 主扫描完成且AI也完成时，保持 completed；否则维持当前状态
             int mainSubmitted = inst.getSubmittedTotal() == null ? 0 : inst.getSubmittedTotal();
             int mainDone = (inst.getSuccessCount() == null ? 0 : inst.getSuccessCount()) + (inst.getFailCount() == null ? 0 : inst.getFailCount());
             if (mainSubmitted > 0 && mainDone >= mainSubmitted && submitted > 0 && cappedSuccess + cappedFail >= submitted) {
@@ -294,19 +136,5 @@ public class AiTaskWorkerImpl implements OfflineScanTaskProcessor {
             }
         }
         jobInstanceService.updateById(inst);
-    }
-
-    private Long toLong(Object v) {
-        if (v == null) {
-            return null;
-        }
-        try {
-            return Long.parseLong(String.valueOf(v));
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    private record AiResult(int maxLevel, Set<String> tags, List<AssetScanResult.ColumnScanInfoItem> columnInfo) {
     }
 }

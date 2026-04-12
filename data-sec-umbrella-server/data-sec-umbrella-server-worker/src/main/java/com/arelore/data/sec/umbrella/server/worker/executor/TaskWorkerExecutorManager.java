@@ -1,15 +1,16 @@
 package com.arelore.data.sec.umbrella.server.worker.executor;
 
+import com.arelore.data.sec.umbrella.server.worker.config.TaskWorkerAiPoolProperties;
 import com.arelore.data.sec.umbrella.server.worker.config.TaskWorkerPoolProperties;
 import jakarta.annotation.PreDestroy;
-import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Component
 /**
  * Worker 线程池管理器，负责任务提交与动态参数调整。
  *
@@ -19,15 +20,51 @@ public class TaskWorkerExecutorManager {
 
     private final ThreadPoolExecutor executor;
 
-    public TaskWorkerExecutorManager(TaskWorkerPoolProperties props) {
-        this.executor = new ThreadPoolExecutor(
+    public TaskWorkerExecutorManager(TaskWorkerPoolProperties props, String threadNamePrefix) {
+        this(
                 props.getCoreSize(),
                 props.getMaxSize(),
+                props.getQueueCapacity(),
                 props.getKeepAliveSeconds(),
+                threadNamePrefix
+        );
+    }
+
+    public TaskWorkerExecutorManager(TaskWorkerAiPoolProperties props, String threadNamePrefix) {
+        this(
+                props.getCoreSize(),
+                props.getMaxSize(),
+                props.getQueueCapacity(),
+                props.getKeepAliveSeconds(),
+                threadNamePrefix
+        );
+    }
+
+    private TaskWorkerExecutorManager(
+            int coreSize,
+            int maxSize,
+            int queueCapacity,
+            int keepAliveSeconds,
+            String threadNamePrefix
+    ) {
+        this.executor = new ThreadPoolExecutor(
+                coreSize,
+                maxSize,
+                keepAliveSeconds,
                 TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(props.getQueueCapacity()),
+                new ArrayBlockingQueue<>(queueCapacity),
+                namedThreadFactory(threadNamePrefix),
                 new ThreadPoolExecutor.CallerRunsPolicy()
         );
+    }
+
+    private static ThreadFactory namedThreadFactory(String prefix) {
+        AtomicInteger n = new AtomicInteger();
+        return r -> {
+            Thread t = new Thread(r, prefix + "-" + n.incrementAndGet());
+            t.setDaemon(false);
+            return t;
+        };
     }
 
     public Future<?> submit(Runnable task) {
